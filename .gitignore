@@ -351,8 +351,23 @@ MigrationBackup/
 
 # Ionide (cross platform F# VS Code tools) working folder
 .ionide/
-
-# IDE Settings folders
 .cr/
-.idea/
-.vscode/
+src/.idea
+
+# .NET MAUI / Xamarin / Mobile development
+**/Resource.designer.cs
+**/AndroidManifest.xml.bak
+**/iOS/Info.plist.bak
+AppPackages/
+*.appx
+*.appxbundle
+*.appxupload
+*.ipa
+*.dSYM.zip
+*.dSYM
+!**/Platforms/
+
+# Mobile app secrets and environment-specific config
+mobile/**/appsettings.json
+**/appsettings.Development.json
+**/appsettings.Production.json
