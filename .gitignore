@@ -371,3 +371,7 @@ AppPackages/
 mobile/**/appsettings.json
 **/appsettings.Development.json
 **/appsettings.Production.json
+
+
+# Tokensave
+.tockensave/
