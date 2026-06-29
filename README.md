@@ -11,6 +11,18 @@ The goal is to show how to make domain decisions explicit, durable, inspectable,
 
 ---
 
+## Repository guide
+
+The `BrewUpDocs/` folder contains additional documentation about the BrewUp Spec Kit harness and the custom BrewUp agents used during the exercise.
+
+The repository branches capture the main exercise states:
+
+* `main` contains the project ready to run the exercises independently;
+* `no_sdd` contains the result of the exercise without SDD / Spec Kit;
+* `sdd-with-harness` contains the result of the exercise run with Spec Kit and the related harness.
+
+---
+
 ## Talk thesis
 
 LLMs can generate code, tests, plans, and architectural sketches faster than ever.
