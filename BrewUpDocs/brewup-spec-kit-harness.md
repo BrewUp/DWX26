@@ -468,7 +468,7 @@ Each file follows the GitHub Copilot agent format:
 **File**
 
 ```text
-.github/agents/load-domain-context.brewup.speckit.agent.md
+.github/agents/speckit.brewup.load-domain-context.agent.md
 ```
 
 **When it runs**
@@ -510,7 +510,7 @@ Without this command, the model may interpret the feature as a simple order-conf
 **File**
 
 ```text
-.github/agents/domain-guard.brewup.speckit.agent.md
+.github/agents/speckit.brewup.domain-guard.agent.md
 ```
 
 **When it runs**
@@ -568,7 +568,7 @@ Sales may store external decision references but must not embed Payment or Wareh
 **File**
 
 ```text
-.github/agents/plan-readiness.brewup.speckit.agent.md
+.github/agents/speckit.brewup.plan-readiness.agent.md
 ```
 
 **When it runs**
@@ -614,7 +614,7 @@ They block planning only when the plan would need to resolve them silently in or
 **File**
 
 ```text
-.github/agents/plan-guard.brewup.speckit.agent.md
+.github/agents/speckit.brewup.plan-guard.agent.md
 ```
 
 **When it runs**
@@ -667,7 +667,7 @@ It makes architectural drift inspectable.
 **File**
 
 ```text
-.github/agents/task-guard.brewup.speckit.agent.md
+.github/agents/speckit.brewup.task-guard.agent.md
 ```
 
 **When it runs**
@@ -705,7 +705,7 @@ It protects the implementation backlog from turning architectural drift into cod
 **File**
 
 ```text
-.github/agents/module-structure-guard.brewup.speckit.agent.md
+.github/agents/speckit.brewup.module-structure-guard.agent.md
 ```
 
 **When it runs**
