@@ -1,6 +1,8 @@
 ---
 description: Review a BrewUp BMAD product brief for governance alignment without changing it.
 tools: ["read", "search"]
+disable-model-invocation: true
+user-invocable: true
 ---
 
 # BrewUp BMAD Product Brief Guard

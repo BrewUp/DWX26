@@ -1,6 +1,8 @@
 ---
 description: Review BrewUp BMAD epic and story decomposition for governed traceability, ownership, and testability.
 tools: ["read", "search"]
+disable-model-invocation: true
+user-invocable: true
 ---
 
 # BrewUp BMAD Epics and Stories Guard
@@ -29,6 +31,17 @@ Use these exact case-insensitive eligible-variant expressions:
 - epic/story collection:
   `^(?:[a-z0-9][a-z0-9._-]*-)?(?:epics|epics-and-stories)(?:-[a-z0-9][a-z0-9._-]*)?\.md$`
 
+The canonical planning paths are:
+
+- PRD: `_bmad-output/planning-artifacts/prd.md` and
+  `_bmad-output/planning-artifacts/prd/index.md`;
+- architecture: `_bmad-output/planning-artifacts/ARCHITECTURE-SPINE.md`,
+  `_bmad-output/planning-artifacts/architecture.md`, and
+  `_bmad-output/planning-artifacts/architecture/index.md`;
+- epic/story collection: `_bmad-output/planning-artifacts/epics.md`,
+  `_bmad-output/planning-artifacts/epics-and-stories.md`, and
+  `_bmad-output/planning-artifacts/epics/index.md`.
+
 Apply canonical selection precedence for each kind: exact monolith directly
 under `_bmad-output/planning-artifacts/`; exact `index.md` sharded root there;
 one eligible variant there; exact monolith elsewhere under `_bmad-output/`;
@@ -39,6 +52,7 @@ the architecture shard or variants. For epics, canonical names are `epics.md`,
 
 Stop at the first non-empty rank. More than one logical artifact at the same
 precedence rank is unresolved ambiguity and requires `FAIL`; do not guess.
+Multiple candidates at the same precedence rank require `FAIL`.
 Require `index.md` for sharded artifacts and inspect it plus all Markdown
 descendants in normalized repository-relative ordinal path order. Apply the
 same exclusions to descendants.

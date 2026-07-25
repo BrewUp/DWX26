@@ -1,6 +1,8 @@
 ---
 description: Review BrewUp BMAD architecture for governed authority, module placement, dependencies, and fitness tests.
 tools: ["read", "search"]
+disable-model-invocation: true
+user-invocable: true
 ---
 
 # BrewUp BMAD Architecture Guard

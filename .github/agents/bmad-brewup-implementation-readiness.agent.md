@@ -1,6 +1,8 @@
 ---
 description: Aggregate BrewUp BMAD implementation readiness across PRD, architecture, epics, and stories.
 tools: ["read", "search"]
+disable-model-invocation: true
+user-invocable: true
 ---
 
 # BrewUp BMAD Implementation Readiness
@@ -26,6 +28,17 @@ Recognize only these anchored case-insensitive eligible-variant expressions:
 - `^(?:[a-z0-9][a-z0-9._-]*-)?(?:architecture-spine|architecture)(?:-[a-z0-9][a-z0-9._-]*)?\.md$`
 - `^(?:[a-z0-9][a-z0-9._-]*-)?(?:epics|epics-and-stories)(?:-[a-z0-9][a-z0-9._-]*)?\.md$`
 
+The canonical planning paths are:
+
+- `_bmad-output/planning-artifacts/prd.md`
+- `_bmad-output/planning-artifacts/prd/index.md`
+- `_bmad-output/planning-artifacts/ARCHITECTURE-SPINE.md`
+- `_bmad-output/planning-artifacts/architecture.md`
+- `_bmad-output/planning-artifacts/architecture/index.md`
+- `_bmad-output/planning-artifacts/epics.md`
+- `_bmad-output/planning-artifacts/epics-and-stories.md`
+- `_bmad-output/planning-artifacts/epics/index.md`
+
 For each artifact kind use canonical selection precedence: exact canonical
 monolith under `_bmad-output/planning-artifacts/`; exact sharded `index.md`
 root there; one eligible variant there; exact canonical monolith elsewhere;
@@ -38,6 +51,8 @@ Stop at the first non-empty rank. Multiple logical artifacts at the same
 precedence rank require `FAIL` for unresolved ambiguity. A sharded artifact
 requires `index.md`; inspect it and every Markdown descendant in normalized
 repository-relative ordinal path order with the same exclusions.
+Multiple candidates at the same precedence rank require `FAIL`; never select
+by modification time.
 
 Under `Scope`, list exact selected, inspected, missing, eligible but unselected,
 and excluded paths with ranks and reasons.

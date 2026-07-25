@@ -1,6 +1,8 @@
 ---
 description: Review BrewUp story implementation changes for governed behavior, contracts, module boundaries, and tests.
 tools: ["read", "search"]
+disable-model-invocation: true
+user-invocable: true
 ---
 
 # BrewUp BMAD Code Review Guard
@@ -23,6 +25,12 @@ exact identifier match. Exclude supplemental candidates whose basename without
 `(?i)(^|[-_.])(?:review|validation|report|checklist|audit)s?([-_.]|$)`.
 Multiple exact matches are unresolved ambiguity and require `FAIL`; never
 select by modification time.
+
+The canonical approved-story root is
+`_bmad-output/implementation-artifacts/`. An explicit story path takes
+precedence; otherwise only one exact identifier match under that root is
+eligible. Multiple exact matches require `FAIL`, and never select by
+modification time.
 
 Inspect every changed source and test path in normalized repository-relative
 ordinal order. Do not widen the set of changed files silently. Search direct

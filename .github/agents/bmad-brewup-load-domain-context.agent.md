@@ -1,6 +1,8 @@
 ---
 description: Load BrewUp Sales Order Confirmation governance before a BMAD workflow.
 tools: ["read", "search"]
+disable-model-invocation: true
+user-invocable: true
 ---
 
 # BrewUp BMAD Domain Context Loader

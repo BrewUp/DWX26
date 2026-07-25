@@ -78,6 +78,57 @@ function Get-RuleIds {
     return @($ruleIds | Sort-Object)
 }
 
+function Get-NumberedRules {
+    param(
+        [string]$Path,
+        [ValidateSet('BC', 'AR')][string]$Prefix
+    )
+
+    if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) {
+        throw "Governance file is missing: $Path"
+    }
+
+    $text = (Get-Content -Raw -LiteralPath $Path).Replace("`r`n", "`n").Replace("`r", "`n")
+    $lines = @($text -split "`n")
+    $rules = [ordered]@{}
+    $headingPattern = "^(`#{2,6})\s+($([regex]::Escape($Prefix))-\d{3})\s+[—-]\s+(.+?)\s*$"
+
+    for ($lineIndex = 0; $lineIndex -lt $lines.Count; $lineIndex++) {
+        $headingMatch = [regex]::Match($lines[$lineIndex], $headingPattern)
+        if (-not $headingMatch.Success) {
+            continue
+        }
+
+        $headingLevel = $headingMatch.Groups[1].Value.Length
+        $ruleId = $headingMatch.Groups[2].Value
+        if ($rules.Contains($ruleId)) {
+            throw "Governance file contains duplicate rule heading $ruleId."
+        }
+
+        $bodyLines = [System.Collections.Generic.List[string]]::new()
+        $bodyIndex = $lineIndex + 1
+        while ($bodyIndex -lt $lines.Count) {
+            $nextHeading = [regex]::Match($lines[$bodyIndex], '^(#+)\s+')
+            if (
+                $nextHeading.Success -and
+                $nextHeading.Groups[1].Value.Length -le $headingLevel
+            ) {
+                break
+            }
+            [void]$bodyLines.Add($lines[$bodyIndex])
+            $bodyIndex++
+        }
+
+        $title = $headingMatch.Groups[3].Value.Trim()
+        $rawBody = ($bodyLines.ToArray() -join "`n") -replace '(?s)(?:\n\s*---\s*)+$', ''
+        $normalizedBody = ($rawBody -replace '\s+', ' ').Trim()
+        $rules[$ruleId] = "$title`n$normalizedBody".Trim()
+        $lineIndex = $bodyIndex - 1
+    }
+
+    return $rules
+}
+
 function Test-StringSequence {
     param([object[]]$Actual, [string[]]$Expected)
 
@@ -123,6 +174,355 @@ function Get-FailCount {
     return @($script:Findings | Where-Object { $_.Decision -eq 'FAIL' }).Count
 }
 
+function ConvertFrom-SupportedTomlBasicString {
+    param([string]$Value)
+
+    $builder = [System.Text.StringBuilder]::new()
+    for ($index = 0; $index -lt $Value.Length; $index++) {
+        $character = $Value[$index]
+        if ($character -ne '\') {
+            [void]$builder.Append($character)
+            continue
+        }
+
+        $index++
+        if ($index -ge $Value.Length) {
+            throw 'Basic string ends with an incomplete escape.'
+        }
+
+        $escape = $Value[$index]
+        switch ($escape) {
+            '"' { [void]$builder.Append('"') }
+            '\' { [void]$builder.Append('\') }
+            'b' { [void]$builder.Append([char]8) }
+            't' { [void]$builder.Append([char]9) }
+            'n' { [void]$builder.Append([char]10) }
+            'f' { [void]$builder.Append([char]12) }
+            'r' { [void]$builder.Append([char]13) }
+            { $_ -ceq 'u' -or $_ -ceq 'U' } {
+                $hexLength = if ($escape -ceq 'u') { 4 } else { 8 }
+                if ($index + $hexLength -ge $Value.Length) {
+                    throw 'Basic string contains an incomplete Unicode escape.'
+                }
+                $hex = $Value.Substring($index + 1, $hexLength)
+                if ($hex -notmatch "^[0-9A-Fa-f]{$hexLength}$") {
+                    throw 'Basic string contains an invalid Unicode escape.'
+                }
+                $codePoint = [Convert]::ToInt32($hex, 16)
+                try {
+                    [void]$builder.Append([char]::ConvertFromUtf32($codePoint))
+                } catch {
+                    throw 'Basic string contains an invalid Unicode code point.'
+                }
+                $index += $hexLength
+            }
+            default {
+                throw "Basic string contains unsupported escape '\$escape'."
+            }
+        }
+    }
+
+    return $builder.ToString()
+}
+
+function ConvertFrom-SupportedTomlStringToken {
+    param(
+        [string]$Token,
+        [switch]$AllowComma
+    )
+
+    $trimmedToken = $Token.Trim()
+    $basicMatch = [regex]::Match(
+        $trimmedToken,
+        '^"(?<value>(?:\\(?:["\\btnfr]|u[0-9A-Fa-f]{4}|U[0-9A-Fa-f]{8})|[^"\\\x00-\x08\x0A-\x1F\x7F])*)"(?<comma>,?)$'
+    )
+    if ($basicMatch.Success) {
+        $hasComma = $basicMatch.Groups['comma'].Value -ceq ','
+        if ($hasComma -and -not $AllowComma) {
+            throw 'A scalar string cannot have a trailing comma.'
+        }
+        return [pscustomobject]@{
+            Value = ConvertFrom-SupportedTomlBasicString $basicMatch.Groups['value'].Value
+            Style = 'basic-string'
+            HasComma = $hasComma
+        }
+    }
+
+    $literalMatch = [regex]::Match(
+        $trimmedToken,
+        '^''(?<value>[^''\x00-\x08\x0A-\x1F\x7F]*)''(?<comma>,?)$'
+    )
+    if ($literalMatch.Success) {
+        $hasComma = $literalMatch.Groups['comma'].Value -ceq ','
+        if ($hasComma -and -not $AllowComma) {
+            throw 'A scalar string cannot have a trailing comma.'
+        }
+        return [pscustomobject]@{
+            Value = $literalMatch.Groups['value'].Value
+            Style = 'literal-string'
+            HasComma = $hasComma
+        }
+    }
+
+    throw 'Only supported single-line basic or literal TOML strings are permitted.'
+}
+
+function ConvertFrom-SupportedSparseToml {
+    param([string]$Text)
+
+    $normalizedText = $Text.Replace("`r`n", "`n").Replace("`r", "`n")
+    $lines = @($normalizedText -split "`n")
+    $lineIndex = 0
+
+    while ($lineIndex -lt $lines.Count -and [string]::IsNullOrWhiteSpace($lines[$lineIndex])) {
+        $lineIndex++
+    }
+    if ($lineIndex -ge $lines.Count) {
+        throw 'Override TOML is empty.'
+    }
+
+    $tableMatch = [regex]::Match($lines[$lineIndex].Trim(), '^\[(?<name>[A-Za-z0-9_-]+)\]$')
+    if (-not $tableMatch.Success) {
+        throw "Line $($lineIndex + 1) must be one bare TOML table header."
+    }
+    $tableName = $tableMatch.Groups['name'].Value
+    $lineIndex++
+
+    $fieldOrder = [System.Collections.Generic.List[string]]::new()
+    $values = [ordered]@{}
+    $styles = [ordered]@{}
+
+    while ($lineIndex -lt $lines.Count) {
+        $line = $lines[$lineIndex]
+        if ([string]::IsNullOrWhiteSpace($line)) {
+            $lineIndex++
+            continue
+        }
+
+        $assignmentMatch = [regex]::Match(
+            $line,
+            '^\s*(?<key>[A-Za-z0-9_-]+|"(?:\\["\\]|[^"\\])*"|''[^'']+'')\s*=\s*(?<value>.*?)\s*$'
+        )
+        if (-not $assignmentMatch.Success) {
+            throw "Line $($lineIndex + 1) is outside the supported sparse TOML grammar."
+        }
+
+        $rawKey = $assignmentMatch.Groups['key'].Value
+        if ($rawKey.StartsWith('"', [System.StringComparison]::Ordinal)) {
+            $key = ConvertFrom-SupportedTomlBasicString $rawKey.Substring(1, $rawKey.Length - 2)
+        } elseif ($rawKey.StartsWith("'", [System.StringComparison]::Ordinal)) {
+            $key = $rawKey.Substring(1, $rawKey.Length - 2)
+        } else {
+            $key = $rawKey
+        }
+        if ($values.Contains($key)) {
+            throw "Line $($lineIndex + 1) duplicates TOML key '$key'."
+        }
+
+        [void]$fieldOrder.Add($key)
+        $rawValue = $assignmentMatch.Groups['value'].Value
+        if ($rawValue -ceq '[') {
+            $items = [System.Collections.Generic.List[string]]::new()
+            $itemStyles = [System.Collections.Generic.List[string]]::new()
+            $lineIndex++
+            $previousItemHadComma = $true
+            $arrayClosed = $false
+
+            while ($lineIndex -lt $lines.Count) {
+                $arrayLine = $lines[$lineIndex]
+                if ([string]::IsNullOrWhiteSpace($arrayLine)) {
+                    $lineIndex++
+                    continue
+                }
+                if ($arrayLine.Trim() -ceq ']') {
+                    $arrayClosed = $true
+                    break
+                }
+                if (-not $previousItemHadComma) {
+                    throw "Line $($lineIndex + 1) follows an array member without a comma."
+                }
+
+                try {
+                    $parsedItem = ConvertFrom-SupportedTomlStringToken $arrayLine -AllowComma
+                } catch {
+                    throw "Line $($lineIndex + 1) is not a supported TOML string-array member. $($_.Exception.Message)"
+                }
+                [void]$items.Add([string]$parsedItem.Value)
+                [void]$itemStyles.Add([string]$parsedItem.Style)
+                $previousItemHadComma = [bool]$parsedItem.HasComma
+                $lineIndex++
+            }
+
+            if (-not $arrayClosed) {
+                throw "Array assigned to '$key' is not closed."
+            }
+            $values[$key] = $items.ToArray()
+            $styles[$key] = $itemStyles.ToArray()
+            $lineIndex++
+            continue
+        }
+
+        try {
+            $parsedScalar = ConvertFrom-SupportedTomlStringToken $rawValue
+        } catch {
+            throw "Line $($lineIndex + 1) has an unsupported scalar value. $($_.Exception.Message)"
+        }
+        $values[$key] = [string]$parsedScalar.Value
+        $styles[$key] = [string]$parsedScalar.Style
+        $lineIndex++
+    }
+
+    return [pscustomobject]@{
+        Table = $tableName
+        FieldOrder = $fieldOrder.ToArray()
+        Values = $values
+        Styles = $styles
+    }
+}
+
+function Get-SupportedAgentFrontmatter {
+    param([string]$Text)
+
+    $frontmatterMatch = [regex]::Match(
+        $Text,
+        '\A---\r?\n(?<frontmatter>[\s\S]*?)\r?\n---\r?\n'
+    )
+    if (-not $frontmatterMatch.Success) {
+        throw 'Frontmatter must be the first bounded document block.'
+    }
+
+    $lines = @($frontmatterMatch.Groups['frontmatter'].Value -split '\r?\n')
+    if ($lines.Count -ne 4) {
+        throw 'Frontmatter must contain exactly four supported fields.'
+    }
+
+    $descriptionMatch = [regex]::Match(
+        $lines[0],
+        '^description:\s+(?<value>\S(?:.*\S)?)\s*$'
+    )
+    if (-not $descriptionMatch.Success) {
+        throw 'description must be a non-empty single-line plain scalar.'
+    }
+    $description = $descriptionMatch.Groups['value'].Value
+    if (
+        $description -match '[\[\]{}]' -or
+        $description -match '(^|\s)#' -or
+        $description -match ':\s' -or
+        $description -match '^(?:[-?](?:\s|$)|[,&*!|>@`''"%])'
+    ) {
+        throw 'description contains syntax outside the supported YAML plain-scalar subset.'
+    }
+    if ($lines[1] -cne 'tools: ["read", "search"]') {
+        throw 'tools must be exactly ["read", "search"].'
+    }
+    if ($lines[2] -cne 'disable-model-invocation: true') {
+        throw 'disable-model-invocation must be Boolean true.'
+    }
+    if ($lines[3] -cne 'user-invocable: true') {
+        throw 'user-invocable must be Boolean true.'
+    }
+
+    return [pscustomobject]@{
+        Description = $description
+        Tools = @('read', 'search')
+        DisableModelInvocation = $true
+        UserInvocable = $true
+    }
+}
+
+function Test-GovernanceSynchronization {
+    param([string]$RepositoryRoot)
+
+    $startingFailCount = Get-FailCount
+    $governancePairs = @(
+        [pscustomobject]@{
+            Prefix = 'BC'
+            ExpectedIds = @(0..11 | ForEach-Object { 'BC-{0:D3}' -f $_ })
+            Original = '.specify/memory/domain-carriers/brewup-sales-order-confirmation.md'
+            Neutral = '.bmad-harness/governance/brewup-sales-order-confirmation.md'
+        },
+        [pscustomobject]@{
+            Prefix = 'AR'
+            ExpectedIds = @(0..18 | ForEach-Object { 'AR-{0:D3}' -f $_ })
+            Original = '.specify/memory/architecture/brewup-module-structure.md'
+            Neutral = '.bmad-harness/governance/brewup-module-structure.md'
+        }
+    )
+
+    foreach ($pair in $governancePairs) {
+        $differingIds = [System.Collections.Generic.HashSet[string]]::new(
+            [System.StringComparer]::Ordinal
+        )
+        try {
+            $originalPath = Resolve-HarnessPath $RepositoryRoot $pair.Original
+            $neutralPath = Resolve-HarnessPath $RepositoryRoot $pair.Neutral
+            $originalRules = Get-NumberedRules $originalPath $pair.Prefix
+            $neutralRules = Get-NumberedRules $neutralPath $pair.Prefix
+
+            $originalIds = @($originalRules.Keys)
+            $neutralIds = @($neutralRules.Keys)
+            $expectedIds = @($pair.ExpectedIds)
+            foreach ($expectedId in $expectedIds) {
+                if (
+                    $originalIds -cnotcontains $expectedId -or
+                    $neutralIds -cnotcontains $expectedId
+                ) {
+                    [void]$differingIds.Add($expectedId)
+                }
+            }
+            foreach ($unexpectedId in @($originalIds + $neutralIds | Sort-Object -Unique)) {
+                if ($expectedIds -cnotcontains $unexpectedId) {
+                    [void]$differingIds.Add([string]$unexpectedId)
+                }
+            }
+
+            if (
+                (Test-StringSet $originalIds $expectedIds) -and
+                -not (Test-StringSequence $originalIds $expectedIds)
+            ) {
+                for ($index = 0; $index -lt $expectedIds.Count; $index++) {
+                    if ($originalIds[$index] -cne $expectedIds[$index]) {
+                        [void]$differingIds.Add([string]$originalIds[$index])
+                        [void]$differingIds.Add([string]$expectedIds[$index])
+                    }
+                }
+            }
+            if (
+                (Test-StringSet $neutralIds $expectedIds) -and
+                -not (Test-StringSequence $neutralIds $expectedIds)
+            ) {
+                for ($index = 0; $index -lt $expectedIds.Count; $index++) {
+                    if ($neutralIds[$index] -cne $expectedIds[$index]) {
+                        [void]$differingIds.Add([string]$neutralIds[$index])
+                        [void]$differingIds.Add([string]$expectedIds[$index])
+                    }
+                }
+            }
+
+            foreach ($ruleId in @($originalIds + $neutralIds | Sort-Object -Unique)) {
+                if (
+                    -not $originalRules.Contains($ruleId) -or
+                    -not $neutralRules.Contains($ruleId) -or
+                    [string]$originalRules[$ruleId] -cne [string]$neutralRules[$ruleId]
+                ) {
+                    [void]$differingIds.Add([string]$ruleId)
+                }
+            }
+
+            if ($differingIds.Count -gt 0) {
+                $identifiedIds = @($differingIds | Sort-Object) -join ', '
+                Add-Finding FAIL 'governance-sync' "$($pair.Prefix) governance differs between $($pair.Original) and $($pair.Neutral) for rule IDs: $identifiedIds."
+            }
+        } catch {
+            Add-Finding FAIL 'governance-sync' "$($pair.Prefix) governance synchronization failed: $($_.Exception.Message)"
+        }
+    }
+
+    if ((Get-FailCount) -eq $startingFailCount) {
+        Add-Finding PASS 'governance-sync' 'Original Spec Kit carriers and client-neutral governance have identical complete normalized numbered rules.'
+    }
+}
+
 function Test-ManifestReferences {
     param([pscustomobject]$Manifest, [string]$RepositoryRoot)
 
@@ -132,16 +532,8 @@ function Test-ManifestReferences {
         '.bmad-harness/governance/brewup-module-structure.md',
         '.bmad-harness/governance/gate-contract.md'
     )
-    $expectedBcRuleIds = @('BC-000', 'BC-003', 'BC-007', 'BC-009')
-    $expectedArRuleIds = @(
-        'AR-000',
-        'AR-001',
-        'AR-002',
-        'AR-003',
-        'AR-008',
-        'AR-010',
-        'AR-016'
-    )
+    $expectedBcRuleIds = @(0..11 | ForEach-Object { 'BC-{0:D3}' -f $_ })
+    $expectedArRuleIds = @(0..18 | ForEach-Object { 'AR-{0:D3}' -f $_ })
     $expectedOverrides = @(
         [pscustomobject]@{ path = '_bmad/custom/bmad-agent-analyst.toml'; kind = 'agent'; skill = 'bmad-agent-analyst' },
         [pscustomobject]@{ path = '_bmad/custom/bmad-agent-pm.toml'; kind = 'agent'; skill = 'bmad-agent-pm' },
@@ -455,11 +847,14 @@ function Test-OverrideShape {
 
         $text = Get-Content -Raw -LiteralPath $path
         $expectedTable = [string]$override.kind
-        $tableMatches = [regex]::Matches($text, '(?m)^\s*\[(?<name>[^\]]+)\]\s*$')
-        if (
-            $tableMatches.Count -ne 1 -or
-            $tableMatches[0].Groups['name'].Value -cne $expectedTable
-        ) {
+        try {
+            $parsedOverride = ConvertFrom-SupportedSparseToml $text
+        } catch {
+            Add-Finding FAIL 'override-toml' "$relativePath is not valid supported sparse TOML: $($_.Exception.Message)"
+            continue
+        }
+
+        if ($parsedOverride.Table -cne $expectedTable) {
             Add-Finding FAIL 'override-table' "$relativePath must contain only the [$expectedTable] TOML table."
         }
 
@@ -468,49 +863,18 @@ function Test-OverrideShape {
         } else {
             @('activation_steps_prepend', 'persistent_facts')
         }
-        $actualFields = @(
-            [regex]::Matches(
-                $text,
-                '(?m)^\s*(?<key>(?:[A-Za-z0-9_-]+|"(?:\\.|[^"\\])*"|''[^'']*'')(?:\s*\.\s*(?:[A-Za-z0-9_-]+|"(?:\\.|[^"\\])*"|''[^'']*''))*)\s*='
-            ) |
-                ForEach-Object {
-                    $key = $_.Groups['key'].Value.Trim()
-                    if (
-                        ($key.StartsWith('"', [System.StringComparison]::Ordinal) -and
-                            $key.EndsWith('"', [System.StringComparison]::Ordinal)) -or
-                        ($key.StartsWith("'", [System.StringComparison]::Ordinal) -and
-                            $key.EndsWith("'", [System.StringComparison]::Ordinal))
-                    ) {
-                        $key.Substring(1, $key.Length - 2)
-                    } else {
-                        $key
-                    }
-                }
-        )
+        $actualFields = @($parsedOverride.FieldOrder)
         if (-not (Test-StringSequence $actualFields $expectedFields)) {
             Add-Finding FAIL 'override-fields' "$relativePath must contain only the permitted sparse fields in canonical order."
         }
 
-        $activationMatch = [regex]::Match(
-            $text,
-            '(?ms)^activation_steps_prepend\s*=\s*\[(?<body>.*?)^\]\s*$'
-        )
-        if (-not $activationMatch.Success) {
+        if (
+            -not $parsedOverride.Values.Contains('activation_steps_prepend') -or
+            $parsedOverride.Values['activation_steps_prepend'] -isnot [array]
+        ) {
             Add-Finding FAIL 'override-activation' "$relativePath must define activation_steps_prepend as an array."
         } else {
-            $quotedActivations = @(
-                [regex]::Matches(
-                    $activationMatch.Groups['body'].Value,
-                    '(?m)^\s*(?:"(?<basic>(?:\\.|[^"\\])*)"|''(?<literal>[^'']*)'')\s*,?\s*$'
-                ) |
-                    ForEach-Object {
-                        if ($_.Groups['basic'].Success) {
-                            $_.Groups['basic'].Value
-                        } else {
-                            $_.Groups['literal'].Value
-                        }
-                    }
-            )
+            $quotedActivations = @($parsedOverride.Values['activation_steps_prepend'])
             $expectedActivations = if ($expectedTable -ceq 'workflow') {
                 $workflowActivation
             } else {
@@ -521,28 +885,15 @@ function Test-OverrideShape {
             }
         }
 
-        $factsMatch = [regex]::Match(
-            $text,
-            '(?ms)^persistent_facts\s*=\s*\[(?<body>.*?)^\]\s*$'
-        )
-        if (-not $factsMatch.Success) {
+        if (
+            -not $parsedOverride.Values.Contains('persistent_facts') -or
+            $parsedOverride.Values['persistent_facts'] -isnot [array]
+        ) {
             Add-Finding FAIL 'override-facts' "$relativePath must define persistent_facts as an array."
             continue
         }
 
-        $quotedFacts = @(
-            [regex]::Matches(
-                $factsMatch.Groups['body'].Value,
-                '(?m)^\s*(?:"(?<basic>(?:\\.|[^"\\])*)"|''(?<literal>[^'']*)'')\s*,?\s*$'
-            ) |
-                ForEach-Object {
-                    if ($_.Groups['basic'].Success) {
-                        $_.Groups['basic'].Value
-                    } else {
-                        $_.Groups['literal'].Value
-                    }
-                }
-        )
+        $quotedFacts = @($parsedOverride.Values['persistent_facts'])
 
         if ($expectedTable -ceq 'agent') {
             $requiredRoleFact = [string]$roleFacts[[string]$override.skill]
@@ -557,14 +908,14 @@ function Test-OverrideShape {
             if (-not (Test-StringSequence $quotedFacts $governanceFacts)) {
                 Add-Finding FAIL 'override-facts' "$relativePath must contain the three exact governance facts in order."
             }
-            $onCompleteMatches = [regex]::Matches(
-                $text,
-                '(?m)^on_complete\s*=\s*"(?<value>[^"\r\n]+)"\s*$'
-            )
-            if ($onCompleteMatches.Count -ne 1) {
+            if (
+                -not $parsedOverride.Values.Contains('on_complete') -or
+                $parsedOverride.Values['on_complete'] -isnot [string] -or
+                $parsedOverride.Styles['on_complete'] -cne 'basic-string'
+            ) {
                 Add-Finding FAIL 'override-on-complete' "$relativePath must define one non-empty on_complete string."
             } else {
-                $onComplete = $onCompleteMatches[0].Groups['value'].Value
+                $onComplete = [string]$parsedOverride.Values['on_complete']
                 $requiredWorkflowFact = [string]$workflowCompletionFacts[[string]$override.skill]
                 $expectedOnComplete = "$requiredWorkflowFact $commonCompletionFact"
                 if (
@@ -608,6 +959,37 @@ function Test-AgentContracts {
             '_bmad-output/planning-artifacts/architecture.md',
             '_bmad-output/planning-artifacts/architecture/index.md'
         )
+        '.github/agents/bmad-brewup-epics-stories-guard.agent.md' = @(
+            '_bmad-output/planning-artifacts/prd.md',
+            '_bmad-output/planning-artifacts/prd/index.md',
+            '_bmad-output/planning-artifacts/ARCHITECTURE-SPINE.md',
+            '_bmad-output/planning-artifacts/architecture.md',
+            '_bmad-output/planning-artifacts/architecture/index.md',
+            '_bmad-output/planning-artifacts/epics.md',
+            '_bmad-output/planning-artifacts/epics-and-stories.md',
+            '_bmad-output/planning-artifacts/epics/index.md'
+        )
+        '.github/agents/bmad-brewup-implementation-readiness.agent.md' = @(
+            '_bmad-output/planning-artifacts/prd.md',
+            '_bmad-output/planning-artifacts/prd/index.md',
+            '_bmad-output/planning-artifacts/ARCHITECTURE-SPINE.md',
+            '_bmad-output/planning-artifacts/architecture.md',
+            '_bmad-output/planning-artifacts/architecture/index.md',
+            '_bmad-output/planning-artifacts/epics.md',
+            '_bmad-output/planning-artifacts/epics-and-stories.md',
+            '_bmad-output/planning-artifacts/epics/index.md'
+        )
+        '.github/agents/bmad-brewup-story-guard.agent.md' = @(
+            '_bmad-output/planning-artifacts/prd.md',
+            '_bmad-output/planning-artifacts/prd/index.md',
+            '_bmad-output/planning-artifacts/ARCHITECTURE-SPINE.md',
+            '_bmad-output/planning-artifacts/architecture.md',
+            '_bmad-output/planning-artifacts/architecture/index.md',
+            '_bmad-output/implementation-artifacts/'
+        )
+        '.github/agents/bmad-brewup-code-review-guard.agent.md' = @(
+            '_bmad-output/implementation-artifacts/'
+        )
     }
 
     foreach ($agent in @($Manifest.agents)) {
@@ -622,20 +1004,10 @@ function Test-AgentContracts {
         }
 
         $text = Get-Content -Raw -LiteralPath $path
-        $frontmatterMatch = [regex]::Match(
-            $text,
-            '\A---\r?\n(?<frontmatter>[\s\S]*?)\r?\n---\r?\n'
-        )
-        if (-not $frontmatterMatch.Success) {
-            Add-Finding FAIL 'agent-frontmatter' "$relativePath must have bounded YAML frontmatter."
-        } else {
-            $frontmatter = $frontmatterMatch.Groups['frontmatter'].Value
-            if ($frontmatter -notmatch '(?m)^description:\s*\S.+$') {
-                Add-Finding FAIL 'agent-frontmatter' "$relativePath needs a non-empty frontmatter description."
-            }
-            if ($frontmatter -notmatch '(?m)^tools:\s*\["read",\s*"search"\]\s*$') {
-                Add-Finding FAIL 'agent-frontmatter' "$relativePath must allow only read and search tools."
-            }
+        try {
+            [void](Get-SupportedAgentFrontmatter $text)
+        } catch {
+            Add-Finding FAIL 'agent-frontmatter' "$relativePath has invalid supported YAML frontmatter: $($_.Exception.Message)"
         }
 
         if ($agent.readOnly -ne $true -or $text -notmatch '(?i)read-only|do not (?:create|edit)|never edit') {
@@ -719,6 +1091,85 @@ function Test-NoInstalledCore {
     }
 }
 
+function Get-MarkdownParagraphEvidence {
+    param(
+        [string]$Text,
+        [string]$RelativePath
+    )
+
+    $lines = @($Text.Replace("`r`n", "`n").Replace("`r", "`n") -split "`n")
+    $paragraphLines = [System.Collections.Generic.List[string]]::new()
+    $evidence = [System.Collections.Generic.List[pscustomobject]]::new()
+    $paragraphStart = 1
+
+    for ($lineIndex = 0; $lineIndex -le $lines.Count; $lineIndex++) {
+        $line = if ($lineIndex -lt $lines.Count) { $lines[$lineIndex] } else { '' }
+        if (-not [string]::IsNullOrWhiteSpace($line)) {
+            if ($paragraphLines.Count -eq 0) {
+                $paragraphStart = $lineIndex + 1
+            }
+            [void]$paragraphLines.Add($line.Trim())
+            continue
+        }
+
+        if ($paragraphLines.Count -gt 0) {
+            [void]$evidence.Add([pscustomobject]@{
+                Path = $RelativePath
+                Line = $paragraphStart
+                Text = ($paragraphLines.ToArray() -join ' ')
+            })
+            $paragraphLines.Clear()
+        }
+    }
+
+    return $evidence.ToArray()
+}
+
+function Get-ArtifactPathEvidence {
+    param(
+        [string]$Text,
+        [string]$RelativePath
+    )
+
+    $lines = @($Text.Replace("`r`n", "`n").Replace("`r", "`n") -split "`n")
+    $evidence = [System.Collections.Generic.List[pscustomobject]]::new()
+    $pathPattern = '(?:`(?<quoted>src[/\\][^`\r\n]+)`|(?<![A-Za-z0-9_.-])(?<bare>src[/\\][A-Za-z0-9_.\-/\\]+))'
+
+    for ($lineIndex = 0; $lineIndex -lt $lines.Count; $lineIndex++) {
+        foreach ($match in [regex]::Matches(
+            $lines[$lineIndex],
+            $pathPattern,
+            [System.Text.RegularExpressions.RegexOptions]::IgnoreCase
+        )) {
+            $pathValue = if ($match.Groups['quoted'].Success) {
+                $match.Groups['quoted'].Value
+            } else {
+                $match.Groups['bare'].Value.TrimEnd('.', ',', ';', ':', ')', ']')
+            }
+            [void]$evidence.Add([pscustomobject]@{
+                Path = $RelativePath
+                Line = $lineIndex + 1
+                ArtifactPath = $pathValue.Replace('\', '/')
+            })
+        }
+    }
+
+    return $evidence.ToArray()
+}
+
+function Format-ArtifactEvidence {
+    param(
+        [pscustomobject]$Evidence,
+        [string]$MatchedText
+    )
+
+    $singleLine = ($MatchedText -replace '\s+', ' ').Trim()
+    if ($singleLine.Length -gt 180) {
+        $singleLine = $singleLine.Substring(0, 177) + '...'
+    }
+    return "$($Evidence.Path):$($Evidence.Line) '$singleLine'"
+}
+
 function Test-ArtifactRules {
     param([string]$ArtifactRoot)
 
@@ -728,26 +1179,9 @@ function Test-ArtifactRules {
         return
     }
 
-    $artifactRules = @(
-        @{
-            Id = 'BC-003/BC-007'
-            Pattern = 'SalesOrder\.Confirm.*(authoriz|reserv)'
-            Message = 'Sales must not authorize payment or reserve stock.'
-        },
-        @{
-            Id = 'AR-001/AR-016'
-            Pattern = 'src[/\\]Sales[/\\].*Payment'
-            Message = 'Payment implementation must not be collapsed into Sales.'
-        },
-        @{
-            Id = 'BC-000'
-            Pattern = 'retry exactly three times.*mark payment declined'
-            Message = 'The story invents provider timeout policy.'
-        }
-    )
-
     [string[]]$markdownPaths = @(
-        Get-ChildItem -LiteralPath $ArtifactRoot -Recurse -File -Filter '*.md' |
+        Get-ChildItem -LiteralPath $ArtifactRoot -Recurse -File |
+            Where-Object { $_.Extension -ieq '.md' } |
             ForEach-Object { $_.FullName }
     )
     [System.Array]::Sort($markdownPaths, [System.StringComparer]::OrdinalIgnoreCase)
@@ -756,19 +1190,97 @@ function Test-ArtifactRules {
         Add-Finding CONCERNS 'artifact-files' "No Markdown artifacts were found under $ArtifactRoot."
     }
 
+    $allParagraphs = [System.Collections.Generic.List[pscustomobject]]::new()
+    $allPaths = [System.Collections.Generic.List[pscustomobject]]::new()
     foreach ($markdownPath in $markdownPaths) {
         $text = Get-Content -Raw -LiteralPath $markdownPath
         $relativePath = [System.IO.Path]::GetRelativePath($ArtifactRoot, $markdownPath).Replace('\', '/')
-        foreach ($rule in $artifactRules) {
-            if (
-                [regex]::IsMatch(
-                    $text,
-                    [string]$rule.Pattern,
-                    [System.Text.RegularExpressions.RegexOptions]::IgnoreCase -bor
-                        [System.Text.RegularExpressions.RegexOptions]::Singleline
-                )
-            ) {
-                Add-Finding FAIL ([string]$rule.Id) "$($rule.Message) Evidence: $relativePath."
+        foreach ($paragraph in Get-MarkdownParagraphEvidence $text $relativePath) {
+            [void]$allParagraphs.Add($paragraph)
+        }
+        foreach ($pathEvidence in Get-ArtifactPathEvidence $text $relativePath) {
+            [void]$allPaths.Add($pathEvidence)
+        }
+    }
+
+    $authorityPattern = '\bSalesOrder\.Confirm(?:\(\))?\b(?:(?![.;]).){0,240}?\b(?:authori[sz](?:e|es|ed|ing)\s+(?:the\s+)?payment|reserv(?:e|es|ed|ing)\s+(?:the\s+)?(?:stock|inventory))\b'
+    $policyPattern = '\bretry exactly three times\b(?:(?![.;]).){0,200}?\bmark payment declined\b'
+    $paymentImplementationPattern = '\bPayment(?:\s+authorization|\s+behavior|\s+module)?\b(?:(?![.;]).){0,220}?\b(?:is|are)\s+(?:implemented|in scope)\b'
+
+    $paymentImplementationEvidence = [System.Collections.Generic.List[pscustomobject]]::new()
+    foreach ($paragraph in $allParagraphs) {
+        $authorityMatch = [regex]::Match(
+            $paragraph.Text,
+            $authorityPattern,
+            [System.Text.RegularExpressions.RegexOptions]::IgnoreCase
+        )
+        if ($authorityMatch.Success) {
+            Add-Finding FAIL 'BC-003/BC-007' "Sales must not authorize payment or reserve stock. Evidence: $(Format-ArtifactEvidence $paragraph $authorityMatch.Value)."
+        }
+
+        $policyMatch = [regex]::Match(
+            $paragraph.Text,
+            $policyPattern,
+            [System.Text.RegularExpressions.RegexOptions]::IgnoreCase
+        )
+        if ($policyMatch.Success) {
+            Add-Finding FAIL 'BC-000' "The story invents provider timeout policy. Evidence: $(Format-ArtifactEvidence $paragraph $policyMatch.Value)."
+        }
+
+        if ([regex]::IsMatch(
+            $paragraph.Text,
+            $paymentImplementationPattern,
+            [System.Text.RegularExpressions.RegexOptions]::IgnoreCase
+        )) {
+            [void]$paymentImplementationEvidence.Add($paragraph)
+        }
+    }
+
+    $paymentCollapsedIntoSales = $false
+    foreach ($pathEvidence in $allPaths) {
+        if (
+            $pathEvidence.ArtifactPath.StartsWith('src/Sales/', [System.StringComparison]::OrdinalIgnoreCase) -and
+            $pathEvidence.ArtifactPath.Substring('src/Sales/'.Length) -match '(?i)(?:^|/)[^/]*Payment[^/]*(?:/|$)'
+        ) {
+            $paymentCollapsedIntoSales = $true
+            Add-Finding FAIL 'AR-001/AR-016' "Payment implementation must not be collapsed into Sales. Evidence: $($pathEvidence.Path):$($pathEvidence.Line) '$($pathEvidence.ArtifactPath)'."
+        }
+    }
+
+    if ($paymentImplementationEvidence.Count -gt 0) {
+        $paymentPaths = @(
+            $allPaths |
+                Where-Object {
+                    $_.ArtifactPath.Equals('src/Payment', [System.StringComparison]::OrdinalIgnoreCase) -or
+                    $_.ArtifactPath.StartsWith('src/Payment/', [System.StringComparison]::OrdinalIgnoreCase)
+                } |
+                ForEach-Object { $_.ArtifactPath }
+        )
+        $scopeEvidence = $paymentImplementationEvidence[0]
+        if ($paymentPaths.Count -eq 0) {
+            if (-not $paymentCollapsedIntoSales) {
+                Add-Finding FAIL 'AR-001/AR-002/AR-016' "Payment behavior is implemented but no physical src/Payment module or projects are evidenced. Evidence: $(Format-ArtifactEvidence $scopeEvidence $scopeEvidence.Text)."
+            }
+        } else {
+            $requiredPaymentProjects = @(
+                'BrewUp.Payment.SharedKernel',
+                'BrewUp.Payment.Domain',
+                'BrewUp.Payment.ReadModel',
+                'BrewUp.Payment.Infrastructure',
+                'BrewUp.Payment.Facade',
+                'BrewUp.Payment.Tests'
+            )
+            $missingProjects = @(
+                $requiredPaymentProjects |
+                    Where-Object {
+                        $requiredProject = $_
+                        -not @($paymentPaths | Where-Object {
+                            $_ -match "(?i)(?:^|/)$([regex]::Escape($requiredProject))(?:/|$)"
+                        })
+                    }
+            )
+            if ($missingProjects.Count -gt 0) {
+                Add-Finding FAIL 'AR-002' "Payment implementation lacks standard physical project evidence: $($missingProjects -join ', '). Evidence: $(Format-ArtifactEvidence $scopeEvidence $scopeEvidence.Text)."
             }
         }
     }
@@ -812,6 +1324,7 @@ if ((Get-FailCount) -eq 0) {
 
 if ($null -ne $manifest) {
     Test-ManifestReferences $manifest $resolvedRepositoryRoot
+    Test-GovernanceSynchronization $resolvedRepositoryRoot
     Test-OverrideShape $manifest $resolvedRepositoryRoot
     Test-AgentContracts $manifest $resolvedRepositoryRoot
     Test-NoInstalledCore $manifest $resolvedRepositoryRoot

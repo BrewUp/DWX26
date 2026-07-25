@@ -20,6 +20,24 @@ compatible BMAD release is a separate operator action.
 | `_bmad/custom/` | Sparse BMAD role and workflow customizations that a compatible later BMAD installation can merge. |
 | `.github/agents/` | Explicit, read-only GitHub Copilot context and guard agents. |
 
+## Governance source relationship
+
+The numbered client-neutral rules are synchronized copies of the original Spec
+Kit carriers:
+
+- `.specify/memory/domain-carriers/brewup-sales-order-confirmation.md`
+- `.specify/memory/architecture/brewup-module-structure.md`
+
+The validator compares the complete ordered `BC-000` through `BC-011` and
+`AR-000` through `AR-018` sets and whitespace-normalized numbered-rule content.
+It reports every differing rule ID. A rule change must update both the original
+carrier and its client-neutral copy in `.bmad-harness/governance/`.
+
+This synchronization check is a repository maintenance guard, not a runtime
+dependency. BMAD project context, customizations, and Copilot agents continue to
+load only `.bmad-harness/governance/`; none of the `_bmad/custom/` overrides
+references `.specify/`.
+
 The harness does not put generated planning or implementation artifacts under
 versioned governance. A BMAD installation normally creates those artifacts
 under `_bmad-output/`; the guard selected for a review locates the relevant
@@ -58,9 +76,11 @@ Use the explicit Copilot agents around the matching BMAD activity:
 | 8 | Before `bmad-dev-story` | `bmad-brewup-story-guard` |
 | 9 | During or after `bmad-code-review` | `bmad-brewup-code-review-guard` |
 
-All guards are read-only. They return `PASS`, `CONCERNS`, or `FAIL` and use the
-report structure in `governance/gate-contract.md`. A guard review is explicit;
-the presence of an agent file does not make it run automatically.
+All guards are read-only. Their frontmatter explicitly sets
+`disable-model-invocation: true` and `user-invocable: true`, so they are
+manual-only and remain available for deliberate operator selection. They return
+`PASS`, `CONCERNS`, or `FAIL` and use the report structure in
+`governance/gate-contract.md`.
 
 ## Validate the overlay
 
@@ -81,10 +101,21 @@ The second command performs repository-only static validation and must exit
 `0`. To lint a prepared Markdown artifact directory as well, pass
 `-ArtifactRoot <path>`.
 
-Static success proves the committed manifest, governance references, sparse
-TOML shape, phase registration, Copilot contracts, and named fixture rules. It
-does not prove a native BMAD merge or workflow execution because BMAD is not
-installed.
+Static success proves the committed manifest, full governance synchronization,
+strict supported sparse TOML syntax, strict supported Copilot frontmatter,
+phase registration, manual-only agent contracts, and named fixture rules. The
+dependency-free TOML grammar consumes each entire override and permits one
+table, canonical sparse assignments, supported single-line quoted strings, and
+multiline string arrays. The frontmatter grammar consumes exactly description,
+read/search tools, and both manual-invocation Boolean fields; trailing,
+unknown, duplicate, or malformed syntax fails.
+
+Optional artifact linting uses bounded paragraph evidence and extracted
+filesystem paths. It distinguishes `SalesOrder.Confirm` requiring external IDs
+from Sales performing authorization/reservation, and it requires all six
+standard `src/Payment/BrewUp.Payment.*` project paths when Payment behavior is
+declared implemented. Static validation still does not prove a native BMAD
+merge, a Copilot run, or workflow execution because BMAD is not installed.
 
 ## What activates after BMAD is installed
 
@@ -110,12 +141,15 @@ contracts. Do not silently renumber or redefine a rule.
 When governance changes:
 
 1. record the domain or architecture decision explicitly;
-2. add a new rule ID when the meaning changes, or make an intentional,
+2. update the applicable original `.specify/memory/` carrier and the matching
+   client-neutral `.bmad-harness/governance/` copy together;
+3. add a new rule ID when the meaning changes, or make an intentional,
    reviewed edit when only wording is clarified;
-3. update every affected manifest entry, project-context summary, override,
+4. update every affected manifest entry, project-context summary, override,
    guard, fixture, and traceability reference without weakening the original
    boundary accidentally;
-4. run both validation commands above and inspect the diff before committing.
+5. run both validation commands above and inspect the differing-ID diagnostics
+   and diff before committing.
 
 The detailed rationale and replay guide is in
 [`BrewUpDocs/brewup-bmad-harness.md`](../BrewUpDocs/brewup-bmad-harness.md).

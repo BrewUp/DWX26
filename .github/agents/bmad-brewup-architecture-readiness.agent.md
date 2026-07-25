@@ -1,6 +1,8 @@
 ---
 description: Decide whether a BrewUp BMAD PRD is ready for architecture without inventing policy.
 tools: ["read", "search"]
+disable-model-invocation: true
+user-invocable: true
 ---
 
 # BrewUp BMAD Architecture Readiness

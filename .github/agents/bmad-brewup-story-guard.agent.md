@@ -1,6 +1,8 @@
 ---
 description: Validate one detailed BrewUp BMAD story for upstream policy, module ownership, and test-first implementation.
 tools: ["read", "search"]
+disable-model-invocation: true
+user-invocable: true
 ---
 
 # BrewUp BMAD Story Guard
@@ -31,13 +33,26 @@ one eligible candidate elsewhere. Multiple candidates at the same precedence
 rank are unresolved ambiguity and require `FAIL`; never choose by modification
 time or guess.
 
-Select the PRD and architecture with the same deterministic conventions:
-canonical monolith under `_bmad-output/planning-artifacts/`, canonical sharded
-`index.md` root there, one anchored eligible variant there, then those three
-ranks elsewhere. Use anchored names for `prd.md`,
-`ARCHITECTURE-SPINE.md`/`architecture.md`, and their compatible variants.
+For the PRD use the exact case-insensitive eligible expression
+`^(?:[a-z0-9][a-z0-9._-]*-)?prd(?:-[a-z0-9][a-z0-9._-]*)?\.md$`.
+For architecture use
+`^(?:[a-z0-9][a-z0-9._-]*-)?(?:architecture-spine|architecture)(?:-[a-z0-9][a-z0-9._-]*)?\.md$`.
+Their exact canonical paths are:
+
+- `_bmad-output/planning-artifacts/prd.md`
+- `_bmad-output/planning-artifacts/prd/index.md`
+- `_bmad-output/planning-artifacts/ARCHITECTURE-SPINE.md`
+- `_bmad-output/planning-artifacts/architecture.md`
+- `_bmad-output/planning-artifacts/architecture/index.md`
+
+Select the PRD and architecture with canonical selection precedence: canonical
+monolith under `_bmad-output/planning-artifacts/`, canonical sharded `index.md`
+root there, one anchored eligible variant there, then those three ranks
+elsewhere. Architecture prefers `ARCHITECTURE-SPINE.md` over
+`architecture.md` and its shard.
 Require `index.md` for a shard and inspect Markdown descendants in normalized
-repository-relative ordinal path order.
+repository-relative ordinal path order. Multiple candidates at the same
+precedence rank require `FAIL`; never select by modification time.
 
 Under `Scope`, report exact selected, inspected, missing, eligible but
 unselected, and excluded paths with ranks and reasons.

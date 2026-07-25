@@ -87,6 +87,32 @@ The overlay has four cooperating layers:
 technology and implementation conventions, but the numbered governance files
 remain authoritative whenever wording conflicts.
 
+### Original Spec Kit carriers and client-neutral copies
+
+The original governance sources remain:
+
+- `.specify/memory/domain-carriers/brewup-sales-order-confirmation.md`
+- `.specify/memory/architecture/brewup-module-structure.md`
+
+Their complete numbered rules are mirrored in
+`.bmad-harness/governance/brewup-sales-order-confirmation.md` and
+`.bmad-harness/governance/brewup-module-structure.md`. Static validation
+compares the ordered `BC-000` through `BC-011` and `AR-000` through `AR-018`
+sets plus whitespace-normalized content for every numbered rule. Missing,
+additional, reordered, or changed rules fail with the differing IDs named.
+
+The direction of runtime dependency is intentionally one-way:
+
+```text
+Spec Kit originals --maintenance synchronization--> client-neutral governance
+                                               |
+                                               +--> BMAD overrides and Copilot
+```
+
+BMAD context, `_bmad/custom/*.toml`, and Copilot guards reference only the
+client-neutral files. The validator reads the originals solely to prevent
+maintenance drift; installing or executing BMAD never requires `.specify/`.
+
 ---
 
 ## 4. BMAD phase mapping
@@ -162,8 +188,12 @@ must supply and own its core runtime and configuration.
 
 ## 6. Every GitHub Copilot agent
 
-The Copilot agents are explicit and read-only. They use only read and search
-tools, never edit the reviewed artifacts, and all report with the gate contract.
+The Copilot agents are explicit, manual-only, and read-only. Every frontmatter
+block uses only read and search tools and sets
+`disable-model-invocation: true` plus `user-invocable: true`. The model cannot
+select these guards automatically, while an operator can invoke the intended
+gate deliberately. They never edit reviewed artifacts and all report with the
+gate contract.
 
 1. `bmad-brewup-load-domain-context` loads the project context and governance,
    then summarizes Sales, Payment, Warehouse, evidence, and open decisions.
@@ -249,16 +279,21 @@ is a scoped statement about the files actually inspected.
 
 ## 9. Expected demo failures
 
-The fixture suite makes three characteristic failures visible:
+The fixture suite makes four characteristic failures visible:
 
 | Fixture | Deliberate defect | Expected finding |
 |---|---|---|
 | `fail-authority/prd.md` | `SalesOrder.Confirm` authorizes payment and reserves inventory. | `FAIL [BC-003/BC-007]` because Payment and Warehouse own those outcomes. |
 | `fail-module/ARCHITECTURE-SPINE.md` | Payment authorization is implemented under `src/Sales/`. | `FAIL [AR-001/AR-016]` because a separate authority is collapsed into Sales. |
+| `fail-missing-payment-module/ARCHITECTURE-SPINE.md` | Payment owns implemented authorization, but no physical Payment module/projects are defined. | `FAIL [AR-001/AR-002/AR-016]` because conceptual ownership lacks required physical structure. |
 | `fail-policy/story-order-confirmation.md` | A story invents exactly three retries and maps timeout to declined. | `FAIL [BC-000]` because missing provider policy must remain open. |
 
 The passing fixtures instead keep Payment and Warehouse behavior in their own
-modules and let Sales store only external decision evidence.
+modules and let Sales store only external decision evidence. The realistic
+fixture deliberately states that `SalesOrder.Confirm` requires
+`PaymentAuthorizationId` and `StockReservationId`, mentions separate Sales and
+Payment paths, and enumerates the six standard Payment project paths. Those
+statements must pass rather than becoming regex false positives.
 
 ---
 
@@ -283,17 +318,31 @@ The nested semantic and structural checks intentionally print `FAIL [...]`.
 The parent test suite verifies each failure's exit code and rule/check ID, then
 ends with `BMAD harness tests passed.` and exit `0`.
 
-The standalone validator verifies manifest types and references, exact phase
-coverage, sparse override facts, Copilot contracts, and that no installed BMAD
-core or core reference is present. Optional artifact linting is available with:
+The standalone validator verifies manifest types and references, complete
+Spec Kit/client-neutral numbered-rule synchronization, exact phase coverage,
+sparse override facts, Copilot contracts, and that no installed BMAD core or
+core reference is present. Optional artifact linting is available with:
 
 ```powershell
 pwsh -NoProfile -File .bmad-harness/scripts/validate-harness.ps1 -ArtifactRoot <path>
 ```
 
-This is deliberately static validation. It does not parse every possible TOML
-form, execute a Copilot agent, install BMAD, or prove native BMAD customization
-merge behavior.
+The validator dependency-free parses a deliberately small, strict subset. Each
+TOML override must be fully consumed as one bare table with canonical sparse
+fields, supported quoted strings, and multiline string arrays; trailing,
+unknown, malformed, or duplicate syntax fails. Each Copilot frontmatter block
+must be fully consumed as exactly a non-empty description, the read/search
+tools array, `disable-model-invocation: true`, and `user-invocable: true`.
+
+Artifact linting evaluates bounded Markdown paragraphs and extracted path
+tokens instead of applying `Singleline` patterns across an entire file.
+Evidence includes deterministic path and line information. If Payment behavior
+is stated as implemented, physical evidence must include `src/Payment/` and
+SharedKernel, Domain, ReadModel, Infrastructure, Facade, and Tests projects.
+
+This remains deliberately static validation. It does not parse every TOML or
+YAML feature outside the documented subset, execute a Copilot agent, install
+BMAD, or prove native BMAD customization merge behavior.
 
 ---
 
@@ -320,11 +369,14 @@ pretend that static checks equal runtime evidence.
 The existing `BC-###` and `AR-###` meanings are stable traceability contracts.
 Do not silently redefine or renumber them to accommodate a generated artifact.
 
-When a domain or architecture decision changes, record the decision, introduce
-a new rule ID when semantics change, update every affected summary, override,
-guard, fixture, and manifest reference, then run both validation commands.
-Clarifying wording is acceptable only when it preserves the original boundary
-and receives normal review.
+When a domain or architecture decision changes, record the decision and update
+the original `.specify/memory/` carrier plus its client-neutral
+`.bmad-harness/governance/` copy together. Introduce a new rule ID when
+semantics change, update every affected summary, override, guard, fixture, and
+manifest reference, then run both validation commands. Clarifying wording is
+acceptable only when it preserves the original boundary, remains synchronized,
+and receives normal review. BMAD runtime inputs continue to reference only the
+client-neutral copies.
 
 ---
 

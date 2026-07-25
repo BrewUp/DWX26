@@ -1,6 +1,8 @@
 ---
 description: Review a BrewUp BMAD PRD for governed requirements and traceability without changing it.
 tools: ["read", "search"]
+disable-model-invocation: true
+user-invocable: true
 ---
 
 # BrewUp BMAD PRD Guard

@@ -22,6 +22,12 @@ function Test-CopilotAgent {
         $frontmatter = $frontmatterMatch.Groups['frontmatter'].Value
         Assert-True ($frontmatter -match '(?m)^description:\s*.+$') "$RelativePath needs a frontmatter description"
         Assert-True ($frontmatter -match '(?m)^tools:\s*\["read",\s*"search"\]\s*$') "$RelativePath must allow only read and search tools"
+        Assert-True (
+            $frontmatter -match '(?m)^disable-model-invocation:\s*true\s*$'
+        ) "$RelativePath must disable model invocation with Boolean true"
+        Assert-True (
+            $frontmatter -match '(?m)^user-invocable:\s*true\s*$'
+        ) "$RelativePath must remain explicitly user-invocable with Boolean true"
     }
     Assert-True ($text -match 'PASS.*CONCERNS.*FAIL') "$RelativePath must use the gate decisions"
     Assert-True ($text -match 'BC-###') "$RelativePath must inspect BC rules"
@@ -44,6 +50,12 @@ foreach ($relativePath in $documentationPaths) {
         $text = Get-Content -Raw -LiteralPath $path
         Assert-True ($text -match 'validate-harness\.ps1') "$relativePath must document validation"
         Assert-True ($text -match 'without.*BMAD|BMAD.*not.*installed') "$relativePath must state the installation boundary"
+        Assert-True (
+            $text.Contains('.specify/memory/domain-carriers/brewup-sales-order-confirmation.md')
+        ) "$relativePath must document the original BC governance carrier"
+        Assert-True (
+            $text.Contains('.specify/memory/architecture/brewup-module-structure.md')
+        ) "$relativePath must document the original AR governance carrier"
     }
 }
 
@@ -54,8 +66,14 @@ if (Test-Path -LiteralPath $manifestPath) {
     $manifest = Get-Content -Raw -LiteralPath $manifestPath | ConvertFrom-Json
     Assert-True ($manifest.schemaVersion -eq 1) 'schemaVersion must be 1'
     Assert-True ($manifest.governance.Count -eq 3) 'three governance documents are required'
-    Assert-True ($manifest.requiredRuleIds.bc.Count -gt 0) 'BC rule IDs are required'
-    Assert-True ($manifest.requiredRuleIds.ar.Count -gt 0) 'AR rule IDs are required'
+    $expectedBcRuleIds = @(0..11 | ForEach-Object { 'BC-{0:D3}' -f $_ })
+    $expectedArRuleIds = @(0..18 | ForEach-Object { 'AR-{0:D3}' -f $_ })
+    Assert-True (
+        (@($manifest.requiredRuleIds.bc) -join ',') -ceq ($expectedBcRuleIds -join ',')
+    ) 'requiredRuleIds.bc must contain the complete ordered BC-000 through BC-011 set'
+    Assert-True (
+        (@($manifest.requiredRuleIds.ar) -join ',') -ceq ($expectedArRuleIds -join ',')
+    ) 'requiredRuleIds.ar must contain the complete ordered AR-000 through AR-018 set'
 
     $expectedAgents = @(
         [pscustomobject]@{
@@ -208,6 +226,75 @@ foreach ($relativePath in $planningGuardPaths) {
     }
 }
 
+function Test-LaterAgentSelectionContract {
+    param(
+        [string]$RelativePath,
+        [string[]]$CanonicalPaths,
+        [string[]]$EligibleExpressions
+    )
+
+    $path = Join-Path $RepositoryRoot $RelativePath
+    if (-not (Test-Path -LiteralPath $path)) { return }
+
+    $text = Get-Content -Raw -LiteralPath $path
+    foreach ($canonicalPath in $CanonicalPaths) {
+        Assert-True (
+            $text.Contains($canonicalPath)
+        ) "$RelativePath must cite canonical artifact path $canonicalPath"
+    }
+    foreach ($eligibleExpression in $EligibleExpressions) {
+        Assert-True (
+            $text.Contains($eligibleExpression)
+        ) "$RelativePath must define eligible expression $eligibleExpression"
+    }
+    Assert-True (
+        $text.Contains('(?i)(^|[-_.])(?:review|validation|report|checklist|audit)s?([-_.]|$)')
+    ) "$RelativePath must define the exact supplemental-path token expression"
+    Assert-True (
+        $text -match '(?is)(?:same precedence rank|multiple .*same.*rank|multiple exact matches).*FAIL'
+    ) "$RelativePath must fail unresolved artifact ambiguity"
+    Assert-True (
+        $text -match '(?is)never (?:select|choose).*modification time'
+    ) "$RelativePath must forbid modification-time selection"
+    Assert-True (
+        $text -match '(?is)Scope.*(?:selected|approved story path).*inspected.*missing.*excluded'
+    ) "$RelativePath must report deterministic artifact-selection evidence under Scope"
+}
+
+$prdEligibleExpression = '^(?:[a-z0-9][a-z0-9._-]*-)?prd(?:-[a-z0-9][a-z0-9._-]*)?\.md$'
+$architectureEligibleExpression = '^(?:[a-z0-9][a-z0-9._-]*-)?(?:architecture-spine|architecture)(?:-[a-z0-9][a-z0-9._-]*)?\.md$'
+$epicsEligibleExpression = '^(?:[a-z0-9][a-z0-9._-]*-)?(?:epics|epics-and-stories)(?:-[a-z0-9][a-z0-9._-]*)?\.md$'
+$storyEligibleExpression = '^(?:(?:[a-z0-9][a-z0-9._-]*-)?story(?:-[a-z0-9][a-z0-9._-]*)?|[0-9]+[-_.][0-9]+(?:[-_.][a-z0-9][a-z0-9._-]*)?)\.md$'
+$planningCanonicalPaths = @(
+    '_bmad-output/planning-artifacts/prd.md',
+    '_bmad-output/planning-artifacts/prd/index.md',
+    '_bmad-output/planning-artifacts/ARCHITECTURE-SPINE.md',
+    '_bmad-output/planning-artifacts/architecture.md',
+    '_bmad-output/planning-artifacts/architecture/index.md'
+)
+$aggregateCanonicalPaths = @($planningCanonicalPaths) + @(
+    '_bmad-output/planning-artifacts/epics.md',
+    '_bmad-output/planning-artifacts/epics-and-stories.md',
+    '_bmad-output/planning-artifacts/epics/index.md'
+)
+
+Test-LaterAgentSelectionContract `
+    '.github/agents/bmad-brewup-epics-stories-guard.agent.md' `
+    $aggregateCanonicalPaths `
+    @($prdEligibleExpression, $architectureEligibleExpression, $epicsEligibleExpression)
+Test-LaterAgentSelectionContract `
+    '.github/agents/bmad-brewup-implementation-readiness.agent.md' `
+    $aggregateCanonicalPaths `
+    @($prdEligibleExpression, $architectureEligibleExpression, $epicsEligibleExpression)
+Test-LaterAgentSelectionContract `
+    '.github/agents/bmad-brewup-story-guard.agent.md' `
+    (@($planningCanonicalPaths) + @('_bmad-output/implementation-artifacts/')) `
+    @($prdEligibleExpression, $architectureEligibleExpression, $storyEligibleExpression)
+Test-LaterAgentSelectionContract `
+    '.github/agents/bmad-brewup-code-review-guard.agent.md' `
+    @('_bmad-output/implementation-artifacts/') `
+    @()
+
 $productBriefGuardPath = Join-Path $RepositoryRoot '.github/agents/bmad-brewup-product-brief-guard.agent.md'
 if (Test-Path -LiteralPath $productBriefGuardPath) {
     $productBriefGuardText = Get-Content -Raw -LiteralPath $productBriefGuardPath
@@ -277,6 +364,10 @@ if (Test-Path -LiteralPath $validator) {
     $passOutput | Write-Output
     Assert-True ($LASTEXITCODE -eq 0) 'pass fixture must pass'
 
+    $realisticPassOutput = & $validator -RepositoryRoot $RepositoryRoot -ArtifactRoot (Join-Path $PSScriptRoot 'fixtures\pass-realistic')
+    $realisticPassOutput | Write-Output
+    Assert-True ($LASTEXITCODE -eq 0) 'realistic external-reference and separate-module fixture must pass'
+
     $authorityOutput = & $validator -RepositoryRoot $RepositoryRoot -ArtifactRoot (Join-Path $PSScriptRoot 'fixtures\fail-authority')
     $authorityExit = $LASTEXITCODE
     $authorityOutput | Write-Output
@@ -294,6 +385,15 @@ if (Test-Path -LiteralPath $validator) {
     Assert-True (
         $moduleText -match 'FAIL \[AR-001/AR-016\]'
     ) 'module fixture must report AR-001/AR-016 evidence'
+
+    $missingPaymentModuleOutput = & $validator -RepositoryRoot $RepositoryRoot -ArtifactRoot (Join-Path $PSScriptRoot 'fixtures\fail-missing-payment-module')
+    $missingPaymentModuleExit = $LASTEXITCODE
+    $missingPaymentModuleOutput | Write-Output
+    $missingPaymentModuleText = @($missingPaymentModuleOutput) -join [Environment]::NewLine
+    Assert-True ($missingPaymentModuleExit -eq 1) 'missing Payment module fixture must fail'
+    Assert-True (
+        $missingPaymentModuleText -match 'FAIL \[AR-001/AR-002/AR-016\]'
+    ) 'missing Payment module fixture must report AR-001/AR-002/AR-016 evidence'
 
     $policyOutput = & $validator -RepositoryRoot $RepositoryRoot -ArtifactRoot (Join-Path $PSScriptRoot 'fixtures\fail-policy')
     $policyExit = $LASTEXITCODE
@@ -320,6 +420,8 @@ if (Test-Path -LiteralPath $validator) {
             $requiredPaths = @(
                 '.bmad-harness/governance',
                 '.bmad-harness/manifest.json',
+                '.specify/memory/domain-carriers/brewup-sales-order-confirmation.md',
+                '.specify/memory/architecture/brewup-module-structure.md',
                 '_bmad/custom',
                 '_bmad-output/project-context.md',
                 '.github/agents'
@@ -350,6 +452,11 @@ if (Test-Path -LiteralPath $validator) {
             return [pscustomobject]@{
                 Name = [string]$fixture.name
                 ExpectedCheckId = [string]$fixture.expectedCheckId
+                ExpectedText = if ($null -ne $fixture.psobject.Properties['expectedText']) {
+                    [string]$fixture.expectedText
+                } else {
+                    $null
+                }
                 ExitCode = $exitCode
                 Output = @($output)
             }
@@ -380,6 +487,11 @@ if (Test-Path -LiteralPath $validator) {
         Assert-True (
             $structuralText -match "FAIL \[$([regex]::Escape($structuralResult.ExpectedCheckId))\]"
         ) "structural fixture '$($structuralResult.Name)' must report $($structuralResult.ExpectedCheckId)"
+        if ($null -ne $structuralResult.ExpectedText -and -not [string]::IsNullOrWhiteSpace($structuralResult.ExpectedText)) {
+            Assert-True (
+                $structuralText.Contains($structuralResult.ExpectedText)
+            ) "structural fixture '$($structuralResult.Name)' must identify $($structuralResult.ExpectedText)"
+        }
     }
 }
 
