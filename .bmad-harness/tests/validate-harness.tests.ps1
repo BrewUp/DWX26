@@ -32,6 +32,21 @@ function Test-CopilotAgent {
     ) "$RelativePath must require all gate headings in order"
 }
 
+$documentationPaths = @(
+    '.bmad-harness/README.md',
+    'BrewUpDocs/brewup-bmad-harness.md'
+)
+
+foreach ($relativePath in $documentationPaths) {
+    $path = Join-Path $RepositoryRoot $relativePath
+    Assert-True (Test-Path -LiteralPath $path) "$relativePath must exist"
+    if (Test-Path -LiteralPath $path) {
+        $text = Get-Content -Raw -LiteralPath $path
+        Assert-True ($text -match 'validate-harness\.ps1') "$relativePath must document validation"
+        Assert-True ($text -match 'without.*BMAD|BMAD.*not.*installed') "$relativePath must state the installation boundary"
+    }
+}
+
 $manifestPath = Join-Path $RepositoryRoot '.bmad-harness\manifest.json'
 Assert-True (Test-Path -LiteralPath $manifestPath) 'manifest.json must exist'
 

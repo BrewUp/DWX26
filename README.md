@@ -13,7 +13,10 @@ The goal is to show how to make domain decisions explicit, durable, inspectable,
 
 ## Repository guide
 
-The `BrewUpDocs/` folder contains additional documentation about the BrewUp Spec Kit harness and the custom BrewUp agents used during the exercise.
+The `BrewUpDocs/` folder contains the
+[BrewUp Spec Kit harness guide](BrewUpDocs/brewup-spec-kit-harness.md) and the
+[BrewUp BMAD Copilot harness guide](BrewUpDocs/brewup-bmad-harness.md), including
+the custom agents used during the exercises.
 
 The repository branches capture the main exercise states:
 
