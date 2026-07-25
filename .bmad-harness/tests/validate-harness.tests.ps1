@@ -288,6 +288,84 @@ if (Test-Path -LiteralPath $validator) {
     Assert-True (
         $policyText -match 'FAIL \[BC-000\]'
     ) 'policy fixture must report BC-000 evidence'
+
+    function Invoke-StructuralFixture {
+        param(
+            [string]$FixturePath,
+            [string]$ValidatorPath,
+            [string]$SourceRepositoryRoot
+        )
+
+        $fixture = Get-Content -Raw -LiteralPath $FixturePath | ConvertFrom-Json
+        $temporaryBase = [System.IO.Path]::GetFullPath([System.IO.Path]::GetTempPath())
+        $temporaryRoot = Join-Path $temporaryBase "brewup-bmad-harness-tests-$([guid]::NewGuid().ToString('N'))"
+        New-Item -ItemType Directory -Path $temporaryRoot | Out-Null
+
+        try {
+            $requiredPaths = @(
+                '.bmad-harness/governance',
+                '.bmad-harness/manifest.json',
+                '_bmad/custom',
+                '_bmad-output/project-context.md',
+                '.github/agents'
+            )
+            foreach ($relativePath in $requiredPaths) {
+                $sourcePath = Join-Path $SourceRepositoryRoot $relativePath
+                $destinationPath = Join-Path $temporaryRoot $relativePath
+                $destinationParent = Split-Path -Parent $destinationPath
+                New-Item -ItemType Directory -Path $destinationParent -Force | Out-Null
+                Copy-Item -LiteralPath $sourcePath -Destination $destinationPath -Recurse
+            }
+
+            $targetPath = Join-Path $temporaryRoot ([string]$fixture.target)
+            $targetText = Get-Content -Raw -LiteralPath $targetPath
+            if ($null -ne $fixture.psobject.Properties['prefix']) {
+                $mutatedText = [string]$fixture.prefix + $targetText + [string]$fixture.suffix
+            } else {
+                $searchText = [string]$fixture.search
+                Assert-True (
+                    $targetText.Contains($searchText)
+                ) "structural fixture '$($fixture.name)' search text must exist"
+                $mutatedText = $targetText.Replace($searchText, [string]$fixture.replace)
+            }
+            Set-Content -LiteralPath $targetPath -Value $mutatedText -NoNewline
+
+            $output = & $ValidatorPath -RepositoryRoot $temporaryRoot
+            $exitCode = $LASTEXITCODE
+            return [pscustomobject]@{
+                Name = [string]$fixture.name
+                ExpectedCheckId = [string]$fixture.expectedCheckId
+                ExitCode = $exitCode
+                Output = @($output)
+            }
+        } finally {
+            $resolvedTemporaryRoot = [System.IO.Path]::GetFullPath($temporaryRoot)
+            $temporaryLeaf = Split-Path -Leaf $resolvedTemporaryRoot
+            if (
+                $resolvedTemporaryRoot.StartsWith($temporaryBase, [System.StringComparison]::OrdinalIgnoreCase) -and
+                $temporaryLeaf.StartsWith('brewup-bmad-harness-tests-', [System.StringComparison]::Ordinal)
+            ) {
+                Remove-Item -LiteralPath $resolvedTemporaryRoot -Recurse -Force
+            }
+        }
+    }
+
+    $structuralFixturePaths = @(
+        Get-ChildItem -LiteralPath (Join-Path $PSScriptRoot 'fixtures\structural') -File -Filter '*.json' |
+            Sort-Object Name |
+            Select-Object -ExpandProperty FullName
+    )
+    foreach ($fixturePath in $structuralFixturePaths) {
+        $structuralResult = Invoke-StructuralFixture $fixturePath $validator $RepositoryRoot
+        $structuralResult.Output | Write-Output
+        $structuralText = @($structuralResult.Output) -join [Environment]::NewLine
+        Assert-True (
+            $structuralResult.ExitCode -eq 1
+        ) "structural fixture '$($structuralResult.Name)' must fail"
+        Assert-True (
+            $structuralText -match "FAIL \[$([regex]::Escape($structuralResult.ExpectedCheckId))\]"
+        ) "structural fixture '$($structuralResult.Name)' must report $($structuralResult.ExpectedCheckId)"
+    }
 }
 
 if ($failures.Count -gt 0) {

@@ -103,6 +103,22 @@ function Test-StringSet {
     return Test-StringSequence $actualValues $expectedValues
 }
 
+function Test-JsonStringArray {
+    param([AllowNull()][object]$Value)
+
+    if ($null -eq $Value -or $Value.GetType() -ne [object[]]) {
+        return $false
+    }
+
+    foreach ($item in $Value) {
+        if ($item -isnot [string]) {
+            return $false
+        }
+    }
+
+    return $true
+}
+
 function Get-FailCount {
     return @($script:Findings | Where-Object { $_.Decision -eq 'FAIL' }).Count
 }
@@ -162,58 +178,135 @@ function Test-ManifestReferences {
         implementation = @('bmad-create-story', 'bmad-dev-story', 'bmad-code-review')
     }
 
-    if ($Manifest.schemaVersion -ne 1) {
-        Add-Finding FAIL 'manifest-schema' 'schemaVersion must be 1.'
+    if (
+        $null -eq $Manifest.schemaVersion -or
+        $Manifest.schemaVersion.GetType() -ne [long] -or
+        $Manifest.schemaVersion -ne 1
+    ) {
+        Add-Finding FAIL 'manifest-schema' 'schemaVersion must be the JSON integer 1.'
     }
 
-    if (-not (Test-StringSequence @($Manifest.governance) $expectedGovernance)) {
+    if (-not (Test-JsonStringArray $Manifest.governance)) {
+        Add-Finding FAIL 'manifest-governance' 'governance must be a JSON array containing only strings.'
+    } elseif (-not (Test-StringSequence @($Manifest.governance) $expectedGovernance)) {
         Add-Finding FAIL 'manifest-governance' 'Governance references must match the three canonical paths in order.'
     }
 
-    if (-not (Test-StringSequence @($Manifest.requiredRuleIds.bc) $expectedBcRuleIds)) {
+    if (
+        $null -eq $Manifest.requiredRuleIds -or
+        $Manifest.requiredRuleIds.GetType() -ne [System.Management.Automation.PSCustomObject]
+    ) {
+        Add-Finding FAIL 'manifest-rules' 'requiredRuleIds must be a JSON object.'
+    }
+    if (-not (Test-JsonStringArray $Manifest.requiredRuleIds.bc)) {
+        Add-Finding FAIL 'manifest-rules-bc' 'requiredRuleIds.bc must be a JSON array containing only strings.'
+    } elseif (-not (Test-StringSequence @($Manifest.requiredRuleIds.bc) $expectedBcRuleIds)) {
         Add-Finding FAIL 'manifest-rules-bc' 'The required BC rule ID list does not match the harness contract.'
     }
-    if (-not (Test-StringSequence @($Manifest.requiredRuleIds.ar) $expectedArRuleIds)) {
+    if (-not (Test-JsonStringArray $Manifest.requiredRuleIds.ar)) {
+        Add-Finding FAIL 'manifest-rules-ar' 'requiredRuleIds.ar must be a JSON array containing only strings.'
+    } elseif (-not (Test-StringSequence @($Manifest.requiredRuleIds.ar) $expectedArRuleIds)) {
         Add-Finding FAIL 'manifest-rules-ar' 'The required AR rule ID list does not match the harness contract.'
     }
 
     $manifestOverrides = @($Manifest.overrides)
-    if ($manifestOverrides.Count -ne $expectedOverrides.Count) {
+    $overrideTypesValid = (
+        $null -ne $Manifest.overrides -and
+        $Manifest.overrides.GetType() -eq [object[]]
+    )
+    if (-not $overrideTypesValid) {
+        Add-Finding FAIL 'manifest-overrides' 'overrides must be a JSON array.'
+    }
+    foreach ($override in $manifestOverrides) {
+        if (
+            $null -eq $override -or
+            $override.GetType() -ne [System.Management.Automation.PSCustomObject] -or
+            $override.path -isnot [string] -or
+            $override.kind -isnot [string] -or
+            $override.skill -isnot [string]
+        ) {
+            $overrideTypesValid = $false
+            Add-Finding FAIL 'manifest-overrides' 'Every override must be an object with string path, kind, and skill properties.'
+        }
+    }
+    if ($overrideTypesValid -and $manifestOverrides.Count -ne $expectedOverrides.Count) {
         Add-Finding FAIL 'manifest-overrides' "Expected $($expectedOverrides.Count) exact override registrations; found $($manifestOverrides.Count)."
     }
-    foreach ($expectedOverride in $expectedOverrides) {
-        $matches = @($manifestOverrides | Where-Object {
-            $_.path -ceq $expectedOverride.path -and
-            $_.kind -ceq $expectedOverride.kind -and
-            $_.skill -ceq $expectedOverride.skill
-        })
-        if ($matches.Count -ne 1) {
-            Add-Finding FAIL 'manifest-overrides' "Missing or duplicated exact override registration: $($expectedOverride.path)."
+    if ($overrideTypesValid) {
+        foreach ($expectedOverride in $expectedOverrides) {
+            $matches = @($manifestOverrides | Where-Object {
+                $_.path -ceq $expectedOverride.path -and
+                $_.kind -ceq $expectedOverride.kind -and
+                $_.skill -ceq $expectedOverride.skill
+            })
+            if ($matches.Count -ne 1) {
+                Add-Finding FAIL 'manifest-overrides' "Missing or duplicated exact override registration: $($expectedOverride.path)."
+            }
         }
     }
 
     $manifestAgents = @($Manifest.agents)
-    if ($manifestAgents.Count -ne $expectedAgents.Count) {
+    $agentTypesValid = (
+        $null -ne $Manifest.agents -and
+        $Manifest.agents.GetType() -eq [object[]]
+    )
+    if (-not $agentTypesValid) {
+        Add-Finding FAIL 'manifest-agents' 'agents must be a JSON array.'
+    }
+    foreach ($agent in $manifestAgents) {
+        if (
+            $null -eq $agent -or
+            $agent.GetType() -ne [System.Management.Automation.PSCustomObject] -or
+            $agent.path -isnot [string] -or
+            $agent.gate -isnot [string] -or
+            $null -eq $agent.readOnly -or
+            $agent.readOnly.GetType() -ne [bool]
+        ) {
+            $agentTypesValid = $false
+            Add-Finding FAIL 'manifest-agents' 'Every agent must be an object with string path/gate and Boolean readOnly properties.'
+        }
+    }
+    if ($agentTypesValid -and $manifestAgents.Count -ne $expectedAgents.Count) {
         Add-Finding FAIL 'manifest-agents' "Expected $($expectedAgents.Count) exact agent registrations; found $($manifestAgents.Count)."
     }
-    foreach ($expectedAgent in $expectedAgents) {
-        $matches = @($manifestAgents | Where-Object {
-            $_.path -ceq $expectedAgent.path -and
-            $_.gate -ceq $expectedAgent.gate -and
-            $_.readOnly -eq $true
-        })
-        if ($matches.Count -ne 1) {
-            Add-Finding FAIL 'manifest-agents' "Missing or malformed exact agent registration: $($expectedAgent.path)."
+    if ($agentTypesValid) {
+        foreach ($expectedAgent in $expectedAgents) {
+            $matches = @($manifestAgents | Where-Object {
+                $_.path -ceq $expectedAgent.path -and
+                $_.gate -ceq $expectedAgent.gate -and
+                $null -ne $_.readOnly -and
+                $_.readOnly.GetType() -eq [bool] -and
+                $_.readOnly
+            })
+            if ($matches.Count -ne 1) {
+                Add-Finding FAIL 'manifest-agents' "Missing or malformed exact agent registration: $($expectedAgent.path)."
+            }
         }
     }
 
-    $phaseNames = @($Manifest.phaseCoverage.psobject.Properties.Name)
-    if (-not (Test-StringSet $phaseNames @($expectedPhaseCoverage.Keys))) {
+    $phaseCoverageTypeValid = (
+        $null -ne $Manifest.phaseCoverage -and
+        $Manifest.phaseCoverage.GetType() -eq [System.Management.Automation.PSCustomObject]
+    )
+    if (-not $phaseCoverageTypeValid) {
+        Add-Finding FAIL 'manifest-phases' 'phaseCoverage must be a JSON object.'
+    }
+    $phaseNames = if ($phaseCoverageTypeValid) {
+        @($Manifest.phaseCoverage.psobject.Properties.Name)
+    } else {
+        @()
+    }
+    if ($phaseCoverageTypeValid -and -not (Test-StringSet $phaseNames @($expectedPhaseCoverage.Keys))) {
         Add-Finding FAIL 'manifest-phases' 'phaseCoverage must contain exactly analysis, planning, solutioning, and implementation.'
     }
     foreach ($phase in $expectedPhaseCoverage.Keys) {
         $property = $Manifest.phaseCoverage.psobject.Properties[$phase]
-        if ($null -eq $property -or -not (Test-StringSequence @($property.Value) $expectedPhaseCoverage[$phase])) {
+        if (
+            $null -eq $property -or
+            -not (Test-JsonStringArray $property.Value) -or
+            -not (Test-StringSequence @($property.Value) $expectedPhaseCoverage[$phase])
+        ) {
+            $phaseCoverageTypeValid = $false
             Add-Finding FAIL 'manifest-phases' "Phase '$phase' does not register the exact required workflow sequence."
         }
     }
@@ -228,9 +321,9 @@ function Test-ManifestReferences {
             @($Manifest.phaseCoverage.$phase) | ForEach-Object { [string]$_ }
         }
     )
-    if (-not (Test-StringSet $phaseWorkflowSkills $registeredWorkflowSkills)) {
+    if ($phaseCoverageTypeValid -and -not (Test-StringSet $phaseWorkflowSkills $registeredWorkflowSkills)) {
         Add-Finding FAIL 'manifest-phase-registration' 'Every workflow override must be registered exactly once across phaseCoverage.'
-    } elseif (@($phaseWorkflowSkills | Group-Object | Where-Object Count -ne 1).Count -gt 0) {
+    } elseif ($phaseCoverageTypeValid -and @($phaseWorkflowSkills | Group-Object | Where-Object Count -ne 1).Count -gt 0) {
         Add-Finding FAIL 'manifest-phase-registration' 'A workflow is duplicated across phaseCoverage.'
     }
 
@@ -341,6 +434,13 @@ function Test-OverrideShape {
         'bmad-code-review' = 'Cite file evidence and return changes requested for critical violations.'
     }
     $commonCompletionFact = 'Report applicable BC-### and AR-### traceability and do not claim readiness when a critical rule is violated.'
+    $agentActivation = @(
+        'Load {project-root}/_bmad-output/project-context.md before reasoning about BrewUp artifacts.'
+    )
+    $workflowActivation = @(
+        'Load {project-root}/_bmad-output/project-context.md.',
+        "Load the BrewUp governance files before reading or writing this workflow's artifact."
+    )
 
     foreach ($override in @($Manifest.overrides)) {
         $relativePath = [string]$override.path
@@ -363,14 +463,41 @@ function Test-OverrideShape {
             Add-Finding FAIL 'override-table' "$relativePath must contain only the [$expectedTable] TOML table."
         }
 
+        $expectedFields = if ($expectedTable -ceq 'workflow') {
+            @('activation_steps_prepend', 'persistent_facts', 'on_complete')
+        } else {
+            @('activation_steps_prepend', 'persistent_facts')
+        }
+        $actualFields = @(
+            [regex]::Matches($text, '(?m)^\s*(?<name>[A-Za-z0-9_.-]+)\s*=') |
+                ForEach-Object { $_.Groups['name'].Value }
+        )
+        if (-not (Test-StringSequence $actualFields $expectedFields)) {
+            Add-Finding FAIL 'override-fields' "$relativePath must contain only the permitted sparse fields in canonical order."
+        }
+
         $activationMatch = [regex]::Match(
             $text,
             '(?ms)^activation_steps_prepend\s*=\s*\[(?<body>.*?)^\]\s*$'
         )
         if (-not $activationMatch.Success) {
             Add-Finding FAIL 'override-activation' "$relativePath must define activation_steps_prepend as an array."
-        } elseif ($activationMatch.Groups['body'].Value -notmatch '\{project-root\}/') {
-            Add-Finding FAIL 'override-project-root' "$relativePath activation must use a {project-root}/ reference."
+        } else {
+            $quotedActivations = @(
+                [regex]::Matches(
+                    $activationMatch.Groups['body'].Value,
+                    '(?m)^\s*"(?<value>[^"\r\n]+)"\s*,?\s*$'
+                ) |
+                    ForEach-Object { $_.Groups['value'].Value }
+            )
+            $expectedActivations = if ($expectedTable -ceq 'workflow') {
+                $workflowActivation
+            } else {
+                $agentActivation
+            }
+            if (-not (Test-StringSequence $quotedActivations $expectedActivations)) {
+                Add-Finding FAIL 'override-activation' "$relativePath must contain the exact canonical activation statements in order."
+            }
         }
 
         $factsMatch = [regex]::Match(
@@ -386,31 +513,20 @@ function Test-OverrideShape {
             [regex]::Matches($factsMatch.Groups['body'].Value, '(?m)^\s*"(?<value>[^"\r\n]+)"\s*,?\s*$') |
                 ForEach-Object { $_.Groups['value'].Value }
         )
-        $expectedFactCount = if ($expectedTable -ceq 'workflow') { 3 } else { 4 }
-        if ($quotedFacts.Count -ne $expectedFactCount) {
-            Add-Finding FAIL 'override-facts' "$relativePath must contain exactly $expectedFactCount sparse persistent facts."
-        }
-
-        $fileFacts = @($quotedFacts | Where-Object { $_.StartsWith('file:', [System.StringComparison]::Ordinal) })
-        if (-not (Test-StringSequence $fileFacts $governanceFacts)) {
-            Add-Finding FAIL 'override-governance-facts' "$relativePath must load the three exact governance facts in order."
-        }
-
-        foreach ($projectRootReference in [regex]::Matches($text, '(?<value>[^"\r\n]*\{project-root\}[^"\r\n]*)')) {
-            if ($projectRootReference.Groups['value'].Value -notmatch '\{project-root\}/') {
-                Add-Finding FAIL 'override-project-root' "$relativePath contains a malformed {project-root} reference."
-            }
-        }
 
         if ($expectedTable -ceq 'agent') {
             $requiredRoleFact = [string]$roleFacts[[string]$override.skill]
-            if ([string]::IsNullOrWhiteSpace($requiredRoleFact) -or $quotedFacts -cnotcontains $requiredRoleFact) {
-                Add-Finding FAIL 'override-role-fact' "$relativePath is missing its exact role-specific fact."
-            }
-            if ($text -match '(?m)^on_complete\s*=') {
-                Add-Finding FAIL 'override-on-complete' "$relativePath is an agent override and must not define on_complete."
+            $expectedFacts = @($governanceFacts) + @($requiredRoleFact)
+            if (
+                [string]::IsNullOrWhiteSpace($requiredRoleFact) -or
+                -not (Test-StringSequence $quotedFacts $expectedFacts)
+            ) {
+                Add-Finding FAIL 'override-facts' "$relativePath must contain the exact governance and role facts in order."
             }
         } elseif ($expectedTable -ceq 'workflow') {
+            if (-not (Test-StringSequence $quotedFacts $governanceFacts)) {
+                Add-Finding FAIL 'override-facts' "$relativePath must contain the three exact governance facts in order."
+            }
             $onCompleteMatches = [regex]::Matches(
                 $text,
                 '(?m)^on_complete\s*=\s*"(?<value>[^"\r\n]+)"\s*$'
@@ -420,14 +536,12 @@ function Test-OverrideShape {
             } else {
                 $onComplete = $onCompleteMatches[0].Groups['value'].Value
                 $requiredWorkflowFact = [string]$workflowCompletionFacts[[string]$override.skill]
+                $expectedOnComplete = "$requiredWorkflowFact $commonCompletionFact"
                 if (
                     [string]::IsNullOrWhiteSpace($requiredWorkflowFact) -or
-                    -not $onComplete.StartsWith($requiredWorkflowFact, [System.StringComparison]::Ordinal)
+                    $onComplete -cne $expectedOnComplete
                 ) {
-                    Add-Finding FAIL 'override-on-complete' "$relativePath is missing its exact workflow completion fact."
-                }
-                if (-not $onComplete.EndsWith($commonCompletionFact, [System.StringComparison]::Ordinal)) {
-                    Add-Finding FAIL 'override-on-complete' "$relativePath is missing the common BC/AR completion contract."
+                    Add-Finding FAIL 'override-on-complete' "$relativePath must contain the exact workflow completion contract."
                 }
             }
         } else {
@@ -563,7 +677,9 @@ function Test-NoInstalledCore {
         }
 
         $text = Get-Content -Raw -LiteralPath $path
-        if ($text -match '(?i)(?:^|[^A-Za-z0-9_])_bmad[/\\](?:bmm|core|scripts)(?:[/\\]|$)') {
+        if (
+            $text -match '(?i)(?:^|[^A-Za-z0-9_])_bmad[/\\](?:(?:bmm|core|scripts)(?:[/\\]|$)|config\.toml)'
+        ) {
             Add-Finding FAIL 'no-installed-core-reference' "$relativePath references an installed BMAD core path."
         }
     }
@@ -648,10 +764,14 @@ if ((Get-FailCount) -eq 0) {
         if (-not (Test-Path -LiteralPath $manifestPath -PathType Leaf)) {
             Add-Finding FAIL 'manifest-json' 'Manifest file is missing: .bmad-harness/manifest.json.'
         } else {
-            $manifest = Get-Content -Raw -LiteralPath $manifestPath | ConvertFrom-Json
-            if ($null -eq $manifest -or $manifest -isnot [pscustomobject]) {
+            $parsedManifest = Get-Content -Raw -LiteralPath $manifestPath | ConvertFrom-Json -NoEnumerate
+            if (
+                $null -eq $parsedManifest -or
+                $parsedManifest.GetType() -ne [System.Management.Automation.PSCustomObject]
+            ) {
                 Add-Finding FAIL 'manifest-json' 'Manifest JSON must contain one object.'
             } else {
+                $manifest = $parsedManifest
                 Add-Finding PASS 'manifest-json' 'Manifest JSON parsed successfully.'
             }
         }
