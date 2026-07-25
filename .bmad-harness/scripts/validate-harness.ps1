@@ -469,8 +469,23 @@ function Test-OverrideShape {
             @('activation_steps_prepend', 'persistent_facts')
         }
         $actualFields = @(
-            [regex]::Matches($text, '(?m)^\s*(?<name>[A-Za-z0-9_.-]+)\s*=') |
-                ForEach-Object { $_.Groups['name'].Value }
+            [regex]::Matches(
+                $text,
+                '(?m)^\s*(?<key>(?:[A-Za-z0-9_-]+|"(?:\\.|[^"\\])*"|''[^'']*'')(?:\s*\.\s*(?:[A-Za-z0-9_-]+|"(?:\\.|[^"\\])*"|''[^'']*''))*)\s*='
+            ) |
+                ForEach-Object {
+                    $key = $_.Groups['key'].Value.Trim()
+                    if (
+                        ($key.StartsWith('"', [System.StringComparison]::Ordinal) -and
+                            $key.EndsWith('"', [System.StringComparison]::Ordinal)) -or
+                        ($key.StartsWith("'", [System.StringComparison]::Ordinal) -and
+                            $key.EndsWith("'", [System.StringComparison]::Ordinal))
+                    ) {
+                        $key.Substring(1, $key.Length - 2)
+                    } else {
+                        $key
+                    }
+                }
         )
         if (-not (Test-StringSequence $actualFields $expectedFields)) {
             Add-Finding FAIL 'override-fields' "$relativePath must contain only the permitted sparse fields in canonical order."
@@ -486,9 +501,15 @@ function Test-OverrideShape {
             $quotedActivations = @(
                 [regex]::Matches(
                     $activationMatch.Groups['body'].Value,
-                    '(?m)^\s*"(?<value>[^"\r\n]+)"\s*,?\s*$'
+                    '(?m)^\s*(?:"(?<basic>(?:\\.|[^"\\])*)"|''(?<literal>[^'']*)'')\s*,?\s*$'
                 ) |
-                    ForEach-Object { $_.Groups['value'].Value }
+                    ForEach-Object {
+                        if ($_.Groups['basic'].Success) {
+                            $_.Groups['basic'].Value
+                        } else {
+                            $_.Groups['literal'].Value
+                        }
+                    }
             )
             $expectedActivations = if ($expectedTable -ceq 'workflow') {
                 $workflowActivation
@@ -510,8 +531,17 @@ function Test-OverrideShape {
         }
 
         $quotedFacts = @(
-            [regex]::Matches($factsMatch.Groups['body'].Value, '(?m)^\s*"(?<value>[^"\r\n]+)"\s*,?\s*$') |
-                ForEach-Object { $_.Groups['value'].Value }
+            [regex]::Matches(
+                $factsMatch.Groups['body'].Value,
+                '(?m)^\s*(?:"(?<basic>(?:\\.|[^"\\])*)"|''(?<literal>[^'']*)'')\s*,?\s*$'
+            ) |
+                ForEach-Object {
+                    if ($_.Groups['basic'].Success) {
+                        $_.Groups['basic'].Value
+                    } else {
+                        $_.Groups['literal'].Value
+                    }
+                }
         )
 
         if ($expectedTable -ceq 'agent') {
