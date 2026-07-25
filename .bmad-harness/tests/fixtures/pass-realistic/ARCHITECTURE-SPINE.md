@@ -1,6 +1,8 @@
 # Sales Order Confirmation Architecture
 
 Sales behavior remains under `src/Sales/BrewUp.Sales.Domain/`.
+Sales stores the external authorization reference at
+`src/Sales/BrewUp.Sales.Domain/ValueObjects/PaymentAuthorizationReference.cs`.
 
 Payment owns payment authorization and is implemented as a separate module:
 

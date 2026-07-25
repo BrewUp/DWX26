@@ -407,7 +407,7 @@ function Get-SupportedAgentFrontmatter {
     if (
         $description -match '[\[\]{}]' -or
         $description -match '(^|\s)#' -or
-        $description -match ':\s' -or
+        $description -match ':(?:\s|$)' -or
         $description -match '^(?:[-?](?:\s|$)|[,&*!|>@`''"%])'
     ) {
         throw 'description contains syntax outside the supported YAML plain-scalar subset.'
@@ -1203,7 +1203,7 @@ function Test-ArtifactRules {
         }
     }
 
-    $authorityPattern = '\bSalesOrder\.Confirm(?:\(\))?\b(?:(?![.;]).){0,240}?\b(?:authori[sz](?:e|es|ed|ing)\s+(?:the\s+)?payment|reserv(?:e|es|ed|ing)\s+(?:the\s+)?(?:stock|inventory))\b'
+    $authorityPattern = '\b(?:Sales|SalesOrder(?:\.Confirm(?:\(\))?)?)\b\s+(?:(?:must|shall|will|can|may|directly|itself)\s+)*(?:authori[sz](?:e|es|ed|ing)\s+(?:the\s+)?payment|reserv(?:e|es|ed|ing)\s+(?:the\s+)?(?:stock|inventory))\b'
     $policyPattern = '\bretry exactly three times\b(?:(?![.;]).){0,200}?\bmark payment declined\b'
     $paymentImplementationPattern = '\bPayment(?:\s+authorization|\s+behavior|\s+module)?\b(?:(?![.;]).){0,220}?\b(?:is|are)\s+(?:implemented|in scope)\b'
 
@@ -1238,10 +1238,36 @@ function Test-ArtifactRules {
 
     $paymentCollapsedIntoSales = $false
     foreach ($pathEvidence in $allPaths) {
-        if (
-            $pathEvidence.ArtifactPath.StartsWith('src/Sales/', [System.StringComparison]::OrdinalIgnoreCase) -and
-            $pathEvidence.ArtifactPath.Substring('src/Sales/'.Length) -match '(?i)(?:^|/)[^/]*Payment[^/]*(?:/|$)'
-        ) {
+        if (-not $pathEvidence.ArtifactPath.StartsWith('src/Sales/', [System.StringComparison]::OrdinalIgnoreCase)) {
+            continue
+        }
+
+        $salesPathSegments = @(
+            $pathEvidence.ArtifactPath.Substring('src/Sales/'.Length) -split '/'
+        )
+        $paymentSegmentIndexes = @(
+            for ($segmentIndex = 0; $segmentIndex -lt $salesPathSegments.Count; $segmentIndex++) {
+                if ($salesPathSegments[$segmentIndex] -match '(?i)Payment') {
+                    $segmentIndex
+                }
+            }
+        )
+        $hasPaymentImplementationSegment = $false
+        foreach ($segmentIndex in $paymentSegmentIndexes) {
+            $segment = $salesPathSegments[$segmentIndex]
+            $isExplicitReferenceSegment = $segment -match '(?i)(?:References?|Identifiers?|Ids?|ValueObjects?)(?:\.[^./]+)?$'
+            $isValueObjectLeaf = (
+                $segmentIndex -eq ($salesPathSegments.Count - 1) -and
+                $segmentIndex -gt 0 -and
+                $salesPathSegments[$segmentIndex - 1] -match '(?i)^(?:ValueObjects?|References?|Identifiers?|Ids?)$'
+            )
+            if (-not $isExplicitReferenceSegment -and -not $isValueObjectLeaf) {
+                $hasPaymentImplementationSegment = $true
+                break
+            }
+        }
+
+        if ($hasPaymentImplementationSegment) {
             $paymentCollapsedIntoSales = $true
             Add-Finding FAIL 'AR-001/AR-016' "Payment implementation must not be collapsed into Sales. Evidence: $($pathEvidence.Path):$($pathEvidence.Line) '$($pathEvidence.ArtifactPath)'."
         }
