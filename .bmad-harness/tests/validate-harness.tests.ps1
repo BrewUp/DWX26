@@ -250,6 +250,46 @@ if (Test-Path -LiteralPath $codeReviewGuardPath) {
     ) 'code review guard must require file-path evidence'
 }
 
+$validator = Join-Path $RepositoryRoot '.bmad-harness\scripts\validate-harness.ps1'
+Assert-True (Test-Path -LiteralPath $validator) 'validator script must exist'
+
+if (Test-Path -LiteralPath $validator) {
+    $repositoryOutput = & $validator -RepositoryRoot $RepositoryRoot
+    $repositoryOutput | Write-Output
+    Assert-True ($LASTEXITCODE -eq 0) 'repository harness validation must pass'
+
+    $passOutput = & $validator -RepositoryRoot $RepositoryRoot -ArtifactRoot (Join-Path $PSScriptRoot 'fixtures\pass')
+    $passOutput | Write-Output
+    Assert-True ($LASTEXITCODE -eq 0) 'pass fixture must pass'
+
+    $authorityOutput = & $validator -RepositoryRoot $RepositoryRoot -ArtifactRoot (Join-Path $PSScriptRoot 'fixtures\fail-authority')
+    $authorityExit = $LASTEXITCODE
+    $authorityOutput | Write-Output
+    $authorityText = @($authorityOutput) -join [Environment]::NewLine
+    Assert-True ($authorityExit -eq 1) 'authority fixture must fail'
+    Assert-True (
+        $authorityText -match 'FAIL \[BC-003/BC-007\]'
+    ) 'authority fixture must report BC-003/BC-007 evidence'
+
+    $moduleOutput = & $validator -RepositoryRoot $RepositoryRoot -ArtifactRoot (Join-Path $PSScriptRoot 'fixtures\fail-module')
+    $moduleExit = $LASTEXITCODE
+    $moduleOutput | Write-Output
+    $moduleText = @($moduleOutput) -join [Environment]::NewLine
+    Assert-True ($moduleExit -eq 1) 'module fixture must fail'
+    Assert-True (
+        $moduleText -match 'FAIL \[AR-001/AR-016\]'
+    ) 'module fixture must report AR-001/AR-016 evidence'
+
+    $policyOutput = & $validator -RepositoryRoot $RepositoryRoot -ArtifactRoot (Join-Path $PSScriptRoot 'fixtures\fail-policy')
+    $policyExit = $LASTEXITCODE
+    $policyOutput | Write-Output
+    $policyText = @($policyOutput) -join [Environment]::NewLine
+    Assert-True ($policyExit -eq 1) 'policy fixture must fail'
+    Assert-True (
+        $policyText -match 'FAIL \[BC-000\]'
+    ) 'policy fixture must report BC-000 evidence'
+}
+
 if ($failures.Count -gt 0) {
     $failures | ForEach-Object { [Console]::Error.WriteLine($_) }
     exit 1
