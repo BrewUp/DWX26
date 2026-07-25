@@ -20,8 +20,26 @@ if (Test-Path -LiteralPath $manifestPath) {
     Assert-True ($manifest.requiredRuleIds.ar.Count -gt 0) 'AR rule IDs are required'
 }
 
+$roleOverrides = @(
+    '_bmad/custom/bmad-agent-analyst.toml',
+    '_bmad/custom/bmad-agent-pm.toml',
+    '_bmad/custom/bmad-agent-architect.toml',
+    '_bmad/custom/bmad-agent-dev.toml'
+)
+
+foreach ($relativePath in $roleOverrides) {
+    $path = Join-Path $RepositoryRoot $relativePath
+    Assert-True (Test-Path -LiteralPath $path) "$relativePath must exist"
+    if (Test-Path -LiteralPath $path) {
+        $text = Get-Content -Raw -LiteralPath $path
+        Assert-True ($text -match '(?m)^\[agent\]$') "$relativePath must use [agent]"
+        Assert-True ($text -match 'persistent_facts\s*=') "$relativePath must define persistent_facts"
+        Assert-True ($text -match 'file:\{project-root\}/\.bmad-harness/governance/') "$relativePath must load governance"
+    }
+}
+
 if ($failures.Count -gt 0) {
-    $failures | ForEach-Object { Write-Error $_ }
+    $failures | ForEach-Object { [Console]::Error.WriteLine($_) }
     exit 1
 }
 

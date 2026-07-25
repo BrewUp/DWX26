@@ -9,7 +9,28 @@
     "bc": ["BC-000", "BC-003", "BC-007", "BC-009"],
     "ar": ["AR-000", "AR-001", "AR-002", "AR-003", "AR-008", "AR-010", "AR-016"]
   },
-  "overrides": [],
+  "overrides": [
+    {
+      "path": "_bmad/custom/bmad-agent-analyst.toml",
+      "kind": "agent",
+      "skill": "bmad-agent-analyst"
+    },
+    {
+      "path": "_bmad/custom/bmad-agent-pm.toml",
+      "kind": "agent",
+      "skill": "bmad-agent-pm"
+    },
+    {
+      "path": "_bmad/custom/bmad-agent-architect.toml",
+      "kind": "agent",
+      "skill": "bmad-agent-architect"
+    },
+    {
+      "path": "_bmad/custom/bmad-agent-dev.toml",
+      "kind": "agent",
+      "skill": "bmad-agent-dev"
+    }
+  ],
   "agents": [],
   "phaseCoverage": {
     "analysis": [],
