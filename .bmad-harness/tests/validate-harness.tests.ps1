@@ -58,6 +58,26 @@ if (Test-Path -LiteralPath $manifestPath) {
         [pscustomobject]@{
             path = '.github/agents/bmad-brewup-architecture-readiness.agent.md'
             gate = 'solutioning.architecture-readiness'
+        },
+        [pscustomobject]@{
+            path = '.github/agents/bmad-brewup-architecture-guard.agent.md'
+            gate = 'solutioning.architecture'
+        },
+        [pscustomobject]@{
+            path = '.github/agents/bmad-brewup-epics-stories-guard.agent.md'
+            gate = 'solutioning.epics-stories'
+        },
+        [pscustomobject]@{
+            path = '.github/agents/bmad-brewup-implementation-readiness.agent.md'
+            gate = 'solutioning.implementation-readiness'
+        },
+        [pscustomobject]@{
+            path = '.github/agents/bmad-brewup-story-guard.agent.md'
+            gate = 'implementation.story'
+        },
+        [pscustomobject]@{
+            path = '.github/agents/bmad-brewup-code-review-guard.agent.md'
+            gate = 'implementation.code-review'
         }
     )
 
@@ -116,7 +136,12 @@ $copilotAgents = @(
     '.github/agents/bmad-brewup-load-domain-context.agent.md',
     '.github/agents/bmad-brewup-product-brief-guard.agent.md',
     '.github/agents/bmad-brewup-prd-guard.agent.md',
-    '.github/agents/bmad-brewup-architecture-readiness.agent.md'
+    '.github/agents/bmad-brewup-architecture-readiness.agent.md',
+    '.github/agents/bmad-brewup-architecture-guard.agent.md',
+    '.github/agents/bmad-brewup-epics-stories-guard.agent.md',
+    '.github/agents/bmad-brewup-implementation-readiness.agent.md',
+    '.github/agents/bmad-brewup-story-guard.agent.md',
+    '.github/agents/bmad-brewup-code-review-guard.agent.md'
 )
 
 foreach ($relativePath in $copilotAgents) {
@@ -196,6 +221,33 @@ if (Test-Path -LiteralPath $architectureReadinessPath) {
     Assert-True (
         $architectureReadinessText -match '(?is)return\s+`FAIL`.*invent a blocking\s+business policy.*return\s+`CONCERNS`.*non-blocking ambiguity.*return\s+`PASS`.*ownership.*external references.*invariant.*open questions.*scope'
     ) 'architecture readiness must define all three readiness thresholds'
+}
+
+$architectureGuardPath = Join-Path $RepositoryRoot '.github/agents/bmad-brewup-architecture-guard.agent.md'
+if (Test-Path -LiteralPath $architectureGuardPath) {
+    $architectureGuardText = Get-Content -Raw -LiteralPath $architectureGuardPath
+    Assert-True (
+        $architectureGuardText -match 'AR-###'
+    ) 'architecture guard must inspect AR rules'
+}
+
+$implementationReadinessPath = Join-Path $RepositoryRoot '.github/agents/bmad-brewup-implementation-readiness.agent.md'
+if (Test-Path -LiteralPath $implementationReadinessPath) {
+    $implementationReadinessText = Get-Content -Raw -LiteralPath $implementationReadinessPath
+    Assert-True (
+        $implementationReadinessText -match 'AR-###'
+    ) 'implementation readiness must inspect AR rules'
+    Assert-True (
+        $implementationReadinessText -match 'Decision:\s*PASS\s*\|\s*CONCERNS\s*\|\s*FAIL'
+    ) 'implementation readiness must define the aggregate decision line'
+}
+
+$codeReviewGuardPath = Join-Path $RepositoryRoot '.github/agents/bmad-brewup-code-review-guard.agent.md'
+if (Test-Path -LiteralPath $codeReviewGuardPath) {
+    $codeReviewGuardText = Get-Content -Raw -LiteralPath $codeReviewGuardPath
+    Assert-True (
+        $codeReviewGuardText -match '(?is)file paths?.*line numbers?.*when available'
+    ) 'code review guard must require file-path evidence'
 }
 
 if ($failures.Count -gt 0) {

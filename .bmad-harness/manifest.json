@@ -91,6 +91,31 @@
       "path": ".github/agents/bmad-brewup-architecture-readiness.agent.md",
       "gate": "solutioning.architecture-readiness",
       "readOnly": true
+    },
+    {
+      "path": ".github/agents/bmad-brewup-architecture-guard.agent.md",
+      "gate": "solutioning.architecture",
+      "readOnly": true
+    },
+    {
+      "path": ".github/agents/bmad-brewup-epics-stories-guard.agent.md",
+      "gate": "solutioning.epics-stories",
+      "readOnly": true
+    },
+    {
+      "path": ".github/agents/bmad-brewup-implementation-readiness.agent.md",
+      "gate": "solutioning.implementation-readiness",
+      "readOnly": true
+    },
+    {
+      "path": ".github/agents/bmad-brewup-story-guard.agent.md",
+      "gate": "implementation.story",
+      "readOnly": true
+    },
+    {
+      "path": ".github/agents/bmad-brewup-code-review-guard.agent.md",
+      "gate": "implementation.code-review",
+      "readOnly": true
     }
   ],
   "phaseCoverage": {
