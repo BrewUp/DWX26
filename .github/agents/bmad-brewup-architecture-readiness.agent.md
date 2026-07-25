@@ -18,12 +18,56 @@ Read:
 - `.bmad-harness/governance/brewup-module-structure.md`
 - `.bmad-harness/governance/gate-contract.md`
 
-Recursively inspect `_bmad-output/` and locate the conventional BMAD PRD
-case-insensitively, including `prd.md`, `prd-*.md`, or equivalent names
-containing `prd`. Prefer a planning-artifacts directory if candidates conflict.
-Report exact normalized repository-relative paths for all inspected files and
-all required or expected files that are missing. The PRD and all three
-governance files are required; return `FAIL` if any is absent.
+Recursively inspect `_bmad-output/` and match paths case-insensitively. Never
+select by modification time or by a loose "contains prd" test.
+
+### Canonical selection precedence
+
+Exclude supplemental candidates before ranking. Exclude any candidate whose
+basename or artifact-directory name identifies a `review`, `validation`,
+`report`, `checklist`, or `audit`, including combinations such as
+`prd-review.md`, `prd-validation-report.md`, and `prd-audit/`. Record every
+excluded path and the exclusion reason.
+Match a supplemental token in the basename without `.md` or in any directory
+segment with the case-insensitive expression
+`(?i)(^|[-_.])(?:review|validation|report|checklist|audit)s?([-_.]|$)`.
+
+An eligible variant basename must match this case-insensitive regular
+expression exactly:
+`^(?:[a-z0-9][a-z0-9._-]*-)?prd(?:-[a-z0-9][a-z0-9._-]*)?\.md$`.
+
+Apply these precedence ranks in order:
+
+1. The exact canonical monolith `_bmad-output/planning-artifacts/prd.md`.
+2. The exact canonical sharded artifact rooted at
+   `_bmad-output/planning-artifacts/prd/index.md`.
+3. A single eligible variant directly under
+   `_bmad-output/planning-artifacts/` whose basename matches the anchored PRD
+   naming form, such as `<project>-prd.md` or `prd-<date>.md`.
+4. A single exact canonical monolith named `prd.md` elsewhere under
+   `_bmad-output/`.
+5. A single exact canonical sharded artifact rooted at `prd/index.md`
+   elsewhere under `_bmad-output/`.
+6. A single eligible variant elsewhere under `_bmad-output/` matching the same
+   anchored naming form.
+
+Stop at the first non-empty precedence rank. If more than one logical artifact
+exists at the same precedence rank, list every candidate and return `FAIL` for
+unresolved ambiguity; do not guess or fall through to a lower rank. If no rank
+has a candidate, report the expected canonical paths as missing and return
+`FAIL`.
+
+A sharded artifact is one logical artifact. Require its `index.md`, then inspect
+that index and every Markdown descendant within the same artifact directory in
+normalized repository-relative ordinal path order. Apply the supplemental-file
+exclusions above to descendants, record excluded descendants, and fail if the
+index is missing.
+
+Under `Scope`, report the exact normalized repository-relative paths of the
+selected logical artifact, every file inspected, every required or expected
+file missing, every eligible but unselected candidate with its precedence rank,
+and every excluded supplemental path with its reason. The selected PRD and all
+three governance files are required; return `FAIL` if any is absent.
 If any governance file is missing, return `FAIL`. If only
 `_bmad-output/project-context.md` is missing while the PRD and all governance
 are available, return at least `CONCERNS`.

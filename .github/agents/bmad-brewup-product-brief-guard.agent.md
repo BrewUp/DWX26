@@ -21,16 +21,57 @@ If any governance file is missing, return `FAIL`. If only
 `_bmad-output/project-context.md` is missing while all governance is available,
 return at least `CONCERNS`.
 
-Recursively inspect `_bmad-output/` and locate conventional BMAD product-brief
-artifacts case-insensitively. Accept conventional names such as
-`product-brief.md`, `product-brief-*.md`, and equivalent names containing both
-`product` and `brief`; prefer a file in a planning-artifacts directory when
-more than one candidate exists. Never assume casing or a single fixed
-subdirectory.
+Recursively inspect `_bmad-output/` and match paths case-insensitively. Never
+select by modification time or by a loose "contains product and brief" test.
 
-Report the exact normalized repository-relative path of every file inspected.
-Also report each required or expected file that is missing. If no product brief
-can be identified, return `FAIL`.
+### Canonical selection precedence
+
+Exclude supplemental candidates before ranking. Exclude any candidate whose
+basename or artifact-directory name identifies a `review`, `validation`,
+`report`, `checklist`, or `audit`, including combinations such as
+`product-brief-review.md`, `product-brief-validation-report.md`, and
+`product-brief-audit/`. Record every excluded path and the exclusion reason.
+Match a supplemental token in the basename without `.md` or in any directory
+segment with the case-insensitive expression
+`(?i)(^|[-_.])(?:review|validation|report|checklist|audit)s?([-_.]|$)`.
+
+An eligible variant basename must match this case-insensitive regular
+expression exactly:
+`^(?:[a-z0-9][a-z0-9._-]*-)?product-brief(?:-[a-z0-9][a-z0-9._-]*)?\.md$`.
+
+Apply these precedence ranks in order:
+
+1. The exact canonical monolith
+   `_bmad-output/planning-artifacts/product-brief.md`.
+2. The exact canonical sharded artifact rooted at
+   `_bmad-output/planning-artifacts/product-brief/index.md`.
+3. A single eligible variant directly under
+   `_bmad-output/planning-artifacts/` whose basename matches the anchored
+   product-brief naming form, such as `<project>-product-brief.md` or
+   `product-brief-<date>.md`.
+4. A single exact canonical monolith named `product-brief.md` elsewhere under
+   `_bmad-output/`.
+5. A single exact canonical sharded artifact rooted at
+   `product-brief/index.md` elsewhere under `_bmad-output/`.
+6. A single eligible variant elsewhere under `_bmad-output/` matching the same
+   anchored naming form.
+
+Stop at the first non-empty precedence rank. If more than one logical artifact
+exists at the same precedence rank, list every candidate and return `FAIL` for
+unresolved ambiguity; do not guess or fall through to a lower rank. If no rank
+has a candidate, report the expected canonical paths as missing and return
+`FAIL`.
+
+A sharded artifact is one logical artifact. Require its `index.md`, then inspect
+that index and every Markdown descendant within the same artifact directory in
+normalized repository-relative ordinal path order. Apply the supplemental-file
+exclusions above to descendants, record excluded descendants, and fail if the
+index is missing.
+
+Under `Scope`, report the exact normalized repository-relative paths of the
+selected logical artifact, every file inspected, every required or expected
+file missing, every eligible but unselected candidate with its precedence rank,
+and every excluded supplemental path with its reason.
 
 ## Checks
 

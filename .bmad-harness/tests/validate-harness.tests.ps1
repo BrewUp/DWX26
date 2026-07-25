@@ -27,6 +27,9 @@ function Test-CopilotAgent {
     Assert-True ($text -match 'BC-###') "$RelativePath must inspect BC rules"
     Assert-True ($text -match 'gate-contract\.md') "$RelativePath must load the gate contract"
     Assert-True ($text -match '(?i)governance file is missing.*FAIL') "$RelativePath must fail when governance is missing"
+    Assert-True (
+        $text -match '(?s)1\.\s*`Decision`.*?2\.\s*`Scope`.*?3\.\s*`Findings`.*?4\.\s*`Open decisions`.*?5\.\s*`Traceability`'
+    ) "$RelativePath must require all gate headings in order"
 }
 
 $manifestPath = Join-Path $RepositoryRoot '.bmad-harness\manifest.json'
@@ -118,6 +121,81 @@ $copilotAgents = @(
 
 foreach ($relativePath in $copilotAgents) {
     Test-CopilotAgent $relativePath
+}
+
+$contextLoaderPath = Join-Path $RepositoryRoot '.github/agents/bmad-brewup-load-domain-context.agent.md'
+if (Test-Path -LiteralPath $contextLoaderPath) {
+    $contextLoaderText = Get-Content -Raw -LiteralPath $contextLoaderPath
+    Assert-True (
+        $contextLoaderText -match '(?is)Sales.*Payment.*Warehouse.*open decisions'
+    ) 'context loader must summarize all authorities and open decisions'
+    Assert-True (
+        $contextLoaderText -match '(?is)do not edit\s+BMAD\s+artifacts'
+    ) 'context loader must explicitly avoid editing BMAD artifacts'
+}
+
+$planningGuardPaths = @(
+    '.github/agents/bmad-brewup-product-brief-guard.agent.md',
+    '.github/agents/bmad-brewup-prd-guard.agent.md',
+    '.github/agents/bmad-brewup-architecture-readiness.agent.md'
+)
+
+foreach ($relativePath in $planningGuardPaths) {
+    $path = Join-Path $RepositoryRoot $relativePath
+    if (Test-Path -LiteralPath $path) {
+        $text = Get-Content -Raw -LiteralPath $path
+        Assert-True (
+            $text -match '(?is)canonical selection precedence.*planning-artifacts.*exact canonical monolith.*sharded.*single eligible variant'
+        ) "$relativePath must define deterministic canonical precedence"
+        Assert-True (
+            $text -match '(?is)case-insensitive regular\s+expression.*\\\.md\$'
+        ) "$relativePath must define an anchored eligible-variant expression"
+        Assert-True (
+            $text -match '(?is)exclude.*review.*validation.*report.*checklist.*audit'
+        ) "$relativePath must exclude supplemental review and report artifacts"
+        Assert-True (
+            $text.Contains('(?i)(^|[-_.])(?:review|validation|report|checklist|audit)s?([-_.]|$)')
+        ) "$relativePath must define the exact supplemental-path token expression"
+        Assert-True (
+            $text -match '(?is)sharded.*index\.md.*ordinal'
+        ) "$relativePath must support deterministic sharded artifacts"
+        Assert-True (
+            $text -match '(?is)same precedence rank.*FAIL'
+        ) "$relativePath must fail unresolved artifact ambiguity"
+        Assert-True (
+            $text -match '(?is)Scope.*exact.*inspected.*missing.*eligible.*excluded'
+        ) "$relativePath must report exact inspected, missing, eligible, and excluded paths"
+    }
+}
+
+$productBriefGuardPath = Join-Path $RepositoryRoot '.github/agents/bmad-brewup-product-brief-guard.agent.md'
+if (Test-Path -LiteralPath $productBriefGuardPath) {
+    $productBriefGuardText = Get-Content -Raw -LiteralPath $productBriefGuardPath
+    Assert-True (
+        $productBriefGuardText.Contains('^(?:[a-z0-9][a-z0-9._-]*-)?product-brief(?:-[a-z0-9][a-z0-9._-]*)?\.md$')
+    ) 'product brief guard must define the exact eligible-variant expression'
+}
+
+$prdGuardPath = Join-Path $RepositoryRoot '.github/agents/bmad-brewup-prd-guard.agent.md'
+if (Test-Path -LiteralPath $prdGuardPath) {
+    $prdGuardText = Get-Content -Raw -LiteralPath $prdGuardPath
+    Assert-True (
+        $prdGuardText.Contains('^(?:[a-z0-9][a-z0-9._-]*-)?prd(?:-[a-z0-9][a-z0-9._-]*)?\.md$')
+    ) 'PRD guard must define the exact eligible-variant expression'
+    Assert-True (
+        $prdGuardText -match '(?is)acceptance criteria.*requirement-to-rule traceability'
+    ) 'PRD guard must check acceptance criteria and requirement-to-rule traceability'
+}
+
+$architectureReadinessPath = Join-Path $RepositoryRoot '.github/agents/bmad-brewup-architecture-readiness.agent.md'
+if (Test-Path -LiteralPath $architectureReadinessPath) {
+    $architectureReadinessText = Get-Content -Raw -LiteralPath $architectureReadinessPath
+    Assert-True (
+        $architectureReadinessText.Contains('^(?:[a-z0-9][a-z0-9._-]*-)?prd(?:-[a-z0-9][a-z0-9._-]*)?\.md$')
+    ) 'architecture readiness must define the exact PRD eligible-variant expression'
+    Assert-True (
+        $architectureReadinessText -match '(?is)return\s+`FAIL`.*invent a blocking\s+business policy.*return\s+`CONCERNS`.*non-blocking ambiguity.*return\s+`PASS`.*ownership.*external references.*invariant.*open questions.*scope'
+    ) 'architecture readiness must define all three readiness thresholds'
 }
 
 if ($failures.Count -gt 0) {
