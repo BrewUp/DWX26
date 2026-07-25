@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "governance": [
+    ".bmad-harness/governance/brewup-sales-order-confirmation.md",
+    ".bmad-harness/governance/brewup-module-structure.md",
+    ".bmad-harness/governance/gate-contract.md"
+  ],
+  "requiredRuleIds": {
+    "bc": ["BC-000", "BC-003", "BC-007", "BC-009"],
+    "ar": ["AR-000", "AR-001", "AR-002", "AR-003", "AR-008", "AR-010", "AR-016"]
+  },
+  "overrides": [],
+  "agents": [],
+  "phaseCoverage": {
+    "analysis": [],
+    "planning": [],
+    "solutioning": [],
+    "implementation": []
+  }
+}
