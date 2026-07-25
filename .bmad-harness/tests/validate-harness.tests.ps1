@@ -9,6 +9,26 @@ function Assert-True {
     if (-not $Condition) { $script:failures.Add($Message) }
 }
 
+function Test-CopilotAgent {
+    param([string]$RelativePath)
+    $path = Join-Path $RepositoryRoot $RelativePath
+    Assert-True (Test-Path -LiteralPath $path) "$RelativePath must exist"
+    if (-not (Test-Path -LiteralPath $path)) { return }
+
+    $text = Get-Content -Raw -LiteralPath $path
+    $frontmatterMatch = [regex]::Match($text, '\A---\r?\n(?<frontmatter>[\s\S]*?)\r?\n---\r?\n')
+    Assert-True $frontmatterMatch.Success "$RelativePath must have bounded frontmatter"
+    if ($frontmatterMatch.Success) {
+        $frontmatter = $frontmatterMatch.Groups['frontmatter'].Value
+        Assert-True ($frontmatter -match '(?m)^description:\s*.+$') "$RelativePath needs a frontmatter description"
+        Assert-True ($frontmatter -match '(?m)^tools:\s*\["read",\s*"search"\]\s*$') "$RelativePath must allow only read and search tools"
+    }
+    Assert-True ($text -match 'PASS.*CONCERNS.*FAIL') "$RelativePath must use the gate decisions"
+    Assert-True ($text -match 'BC-###') "$RelativePath must inspect BC rules"
+    Assert-True ($text -match 'gate-contract\.md') "$RelativePath must load the gate contract"
+    Assert-True ($text -match '(?i)governance file is missing.*FAIL') "$RelativePath must fail when governance is missing"
+}
+
 $manifestPath = Join-Path $RepositoryRoot '.bmad-harness\manifest.json'
 Assert-True (Test-Path -LiteralPath $manifestPath) 'manifest.json must exist'
 
@@ -18,6 +38,34 @@ if (Test-Path -LiteralPath $manifestPath) {
     Assert-True ($manifest.governance.Count -eq 3) 'three governance documents are required'
     Assert-True ($manifest.requiredRuleIds.bc.Count -gt 0) 'BC rule IDs are required'
     Assert-True ($manifest.requiredRuleIds.ar.Count -gt 0) 'AR rule IDs are required'
+
+    $expectedAgents = @(
+        [pscustomobject]@{
+            path = '.github/agents/bmad-brewup-load-domain-context.agent.md'
+            gate = 'analysis.context'
+        },
+        [pscustomobject]@{
+            path = '.github/agents/bmad-brewup-product-brief-guard.agent.md'
+            gate = 'analysis.product-brief'
+        },
+        [pscustomobject]@{
+            path = '.github/agents/bmad-brewup-prd-guard.agent.md'
+            gate = 'planning.prd'
+        },
+        [pscustomobject]@{
+            path = '.github/agents/bmad-brewup-architecture-readiness.agent.md'
+            gate = 'solutioning.architecture-readiness'
+        }
+    )
+
+    foreach ($expectedAgent in $expectedAgents) {
+        $registered = @($manifest.agents | Where-Object { $_.path -eq $expectedAgent.path })
+        Assert-True ($registered.Count -eq 1) "$($expectedAgent.path) must be registered once"
+        if ($registered.Count -eq 1) {
+            Assert-True ($registered[0].gate -eq $expectedAgent.gate) "$($expectedAgent.path) must use gate $($expectedAgent.gate)"
+            Assert-True ($registered[0].readOnly -eq $true) "$($expectedAgent.path) must be read-only"
+        }
+    }
 }
 
 $roleOverrides = @(
@@ -59,6 +107,17 @@ foreach ($skill in $workflowSkills) {
         Assert-True ($text -match 'activation_steps_prepend\s*=') "$relativePath must prepend activation"
         Assert-True ($text -match 'persistent_facts\s*=') "$relativePath must define persistent facts"
     }
+}
+
+$copilotAgents = @(
+    '.github/agents/bmad-brewup-load-domain-context.agent.md',
+    '.github/agents/bmad-brewup-product-brief-guard.agent.md',
+    '.github/agents/bmad-brewup-prd-guard.agent.md',
+    '.github/agents/bmad-brewup-architecture-readiness.agent.md'
+)
+
+foreach ($relativePath in $copilotAgents) {
+    Test-CopilotAgent $relativePath
 }
 
 if ($failures.Count -gt 0) {

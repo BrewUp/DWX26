@@ -71,7 +71,28 @@
       "skill": "bmad-code-review"
     }
   ],
-  "agents": [],
+  "agents": [
+    {
+      "path": ".github/agents/bmad-brewup-load-domain-context.agent.md",
+      "gate": "analysis.context",
+      "readOnly": true
+    },
+    {
+      "path": ".github/agents/bmad-brewup-product-brief-guard.agent.md",
+      "gate": "analysis.product-brief",
+      "readOnly": true
+    },
+    {
+      "path": ".github/agents/bmad-brewup-prd-guard.agent.md",
+      "gate": "planning.prd",
+      "readOnly": true
+    },
+    {
+      "path": ".github/agents/bmad-brewup-architecture-readiness.agent.md",
+      "gate": "solutioning.architecture-readiness",
+      "readOnly": true
+    }
+  ],
   "phaseCoverage": {
     "analysis": ["bmad-product-brief"],
     "planning": ["bmad-prd"],
