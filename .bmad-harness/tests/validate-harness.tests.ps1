@@ -38,6 +38,29 @@ foreach ($relativePath in $roleOverrides) {
     }
 }
 
+$workflowSkills = @(
+    'bmad-product-brief',
+    'bmad-prd',
+    'bmad-architecture',
+    'bmad-create-epics-and-stories',
+    'bmad-check-implementation-readiness',
+    'bmad-create-story',
+    'bmad-dev-story',
+    'bmad-code-review'
+)
+
+foreach ($skill in $workflowSkills) {
+    $relativePath = "_bmad/custom/$skill.toml"
+    $path = Join-Path $RepositoryRoot $relativePath
+    Assert-True (Test-Path -LiteralPath $path) "$relativePath must exist"
+    if (Test-Path -LiteralPath $path) {
+        $text = Get-Content -Raw -LiteralPath $path
+        Assert-True ($text -match '(?m)^\[workflow\]$') "$relativePath must use [workflow]"
+        Assert-True ($text -match 'activation_steps_prepend\s*=') "$relativePath must prepend activation"
+        Assert-True ($text -match 'persistent_facts\s*=') "$relativePath must define persistent facts"
+    }
+}
+
 if ($failures.Count -gt 0) {
     $failures | ForEach-Object { [Console]::Error.WriteLine($_) }
     exit 1
