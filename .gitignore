@@ -353,6 +353,7 @@ MigrationBackup/
 .ionide/
 .cr/
 src/.idea
+.worktrees/
 
 # .NET MAUI / Xamarin / Mobile development
 **/Resource.designer.cs
