@@ -136,7 +136,7 @@ foreach ($relativePath in $roleOverrides) {
     Assert-True (Test-Path -LiteralPath $path) "$relativePath must exist"
     if (Test-Path -LiteralPath $path) {
         $text = Get-Content -Raw -LiteralPath $path
-        Assert-True ($text -match '(?m)^\[agent\]$') "$relativePath must use [agent]"
+        Assert-True ($text -match '(?m)^\[agent\]\r?$') "$relativePath must use [agent]"
         Assert-True ($text -match 'persistent_facts\s*=') "$relativePath must define persistent_facts"
         Assert-True ($text -match 'file:\{project-root\}/\.bmad-harness/governance/') "$relativePath must load governance"
     }
@@ -159,7 +159,7 @@ foreach ($skill in $workflowSkills) {
     Assert-True (Test-Path -LiteralPath $path) "$relativePath must exist"
     if (Test-Path -LiteralPath $path) {
         $text = Get-Content -Raw -LiteralPath $path
-        Assert-True ($text -match '(?m)^\[workflow\]$') "$relativePath must use [workflow]"
+        Assert-True ($text -match '(?m)^\[workflow\]\r?$') "$relativePath must use [workflow]"
         Assert-True ($text -match 'activation_steps_prepend\s*=') "$relativePath must prepend activation"
         Assert-True ($text -match 'persistent_facts\s*=') "$relativePath must define persistent facts"
     }
@@ -436,14 +436,15 @@ if (Test-Path -LiteralPath $validator) {
 
             $targetPath = Join-Path $temporaryRoot ([string]$fixture.target)
             $targetText = Get-Content -Raw -LiteralPath $targetPath
+            $normalizedTargetText = $targetText.Replace("`r`n", "`n")
             if ($null -ne $fixture.psobject.Properties['prefix']) {
-                $mutatedText = [string]$fixture.prefix + $targetText + [string]$fixture.suffix
+                $mutatedText = [string]$fixture.prefix + $normalizedTargetText + [string]$fixture.suffix
             } else {
                 $searchText = [string]$fixture.search
                 Assert-True (
-                    $targetText.Contains($searchText)
+                    $normalizedTargetText.Contains($searchText)
                 ) "structural fixture '$($fixture.name)' search text must exist"
-                $mutatedText = $targetText.Replace($searchText, [string]$fixture.replace)
+                $mutatedText = $normalizedTargetText.Replace($searchText, [string]$fixture.replace)
             }
             Set-Content -LiteralPath $targetPath -Value $mutatedText -NoNewline
 
