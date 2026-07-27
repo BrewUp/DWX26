@@ -34,6 +34,10 @@ reservation, shipment, invoicing, and provider execution remain exclusions.
 | 1.4 | FR-009–012, FR-019; AD-1, AD-2, AD-7, AD-9, AD-10 | Confirmation specifications; projection/publication boundary | BC-001; BC-002; BC-004; BC-006; BC-009; BC-010; AR-006 through AR-017 |
 | 1.5 | FR-013–015, FR-019; AD-1, AD-2, AD-8, AD-10, AD-11 | Ordering, terminal failure, replay, integration, architecture | BC-001; BC-003 through BC-011; AR-012; AR-015; AR-017; AR-018 |
 
-NFR-005 is assigned to Story 1.1's `ImplementationConventionReview`, which
-checks version-7 GUID creation and configured awaits across affected production
-code under AD-10, AD-11, AR-000, and AR-012.
+NFR-005 is assigned to explicit `Story11` through `Story15` convention reviews,
+each scoped to that story's changed production code under AD-10, AD-11, AR-000,
+and AR-012.
+
+The fix-round strict guard returned `PASS` after verifying shell-first meaningful
+RED, Story 1.2's RED-first order, per-story convention checks, saga-created
+version-7 evidence IDs, and the named shipment-trigger timing regression.

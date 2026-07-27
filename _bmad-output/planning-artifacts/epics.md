@@ -125,17 +125,24 @@ So that Payment authority exists as a complete architectural increment.
 **When** `RequestPaymentAuthorization` is handled
 **Then** Payment emits one `PaymentAuthorizationRequested` and restores the
 aggregate as pending
-**And** the request stores only its Payment ID, Sales Order reference, and
-correlation ID.
+**And** the aggregate retains only its Payment ID, Sales Order reference, and
+pending state; correlation ID remains command/event metadata.
+
+**Given** the same stable authorization request was already applied
+**When** `RequestPaymentAuthorization` is replayed
+**Then** Payment emits no second `PaymentAuthorizationRequested`
+**And** `DoNotRequestPaymentAuthorizationTwice` proves the no-op.
 
 **Given** a pending authorization and a provider-supplied reference
 **When** `RecordPaymentAuthorized` is handled
 **Then** Payment emits one `PaymentAuthorized`
 **And** replaying the authorized outcome emits no second event.
 
-**Given** the behavior is not yet implemented
-**When** the three Payment `CommandSpecification<T>` tests are added and run
-**Then** they fail before production code is written
+**Given** the six minimal project shells and compilable test harness exist but
+Payment contracts/domain behavior do not
+**When** the four Payment `CommandSpecification<T>` tests are added and run
+**Then** they fail for missing contracts/domain behavior before production code
+is written
 **And** pass after the aggregate and load-call-save handlers are implemented.
 
 **Given** Payment becomes an implemented business authority in this story
@@ -145,11 +152,11 @@ correlation ID.
 **And** architecture fitness tests prove project existence, solution
 membership, host registration, contract placement, and allowed references.
 
-**Given** this and later stories create GUIDs or await asynchronous work
-**When** static/code-review verification inspects changed production code
+**Given** Story 1.1 creates GUIDs or awaits asynchronous work
+**When** static/code-review verification inspects Story 1.1 changed production code
 **Then** new GUIDs use `Guid.CreateVersion7()` and awaited tasks use
 `ConfigureAwait(false)`
-**And** `ImplementationConventionReview` records no exception without explicit
+**And** `Story11ImplementationConventionReview` records no exception without explicit
 architecture approval.
 
 **Traceability and ownership:** FR-001 through FR-004; FR-016 through FR-019;
@@ -162,6 +169,7 @@ all six AD-3 paths; composition belongs in `src/BrewUp.slnx`,
 `src/BrewUp.Rest/Module/PaymentModule.cs`, `src/BrewUp.Rest/Program.cs`, and
 `src/BrewUp.Rest/BrewUp.Rest.csproj`. Tests:
 `RequestPaymentAuthorizationSuccessfully`,
+`DoNotRequestPaymentAuthorizationTwice`,
 `RecordPaymentAuthorizedSuccessfully`, `DoNotAuthorizePaymentTwice`, and
 `PaymentModuleStructureAndComposition`. The minimal Facade registration may be
 empty of endpoints until Story 1.2, but the module must build and be
@@ -210,8 +218,24 @@ MongoDB, RabbitMQ, Sales Domain, or Warehouse Domain dependency.
 `ProjectAndPublishAuthorizedOutcome`, and `PaymentPersistenceWiring` pass
 **And** duplicate callback delivery publishes no second integration outcome.
 
-**Traceability and ownership:** FR-001, FR-003, FR-004, FR-016 through FR-019; AD-3,
-AD-4, AD-5, AD-9, AD-10; BC-003, BC-004; AR-001 through AR-017. ReadModel,
+**Given** callback, projection, persistence, and publication behavior is absent
+**When** the four named boundary/integration tests are written and run first
+**Then** they fail for the missing Story 1.2 behavior before production changes
+**And** they pass only after the minimum implementation is complete.
+
+**Given** Story 1.2 changes production code
+**When** `Story12ImplementationConventionReview` inspects those changed files
+**Then** new GUIDs use `Guid.CreateVersion7()` and awaited tasks use
+`ConfigureAwait(false)`
+**And** the review runs after GREEN verification.
+
+**Implementation order (mandatory):** (1) write the four named tests, (2) run
+and record meaningful RED, (3) implement projection/persistence/Facade/callback/
+publication behavior, (4) run GREEN plus architecture and convention checks.
+
+**Traceability and ownership:** FR-001, FR-003, FR-004, FR-016 through FR-019;
+NFR-005; AD-3,
+AD-4, AD-5, AD-9, AD-10, AD-11; BC-003, BC-004; AR-000 through AR-017. ReadModel,
 Infrastructure, Facade, Tests/Architecture, REST `PaymentModule`,
 `BrewUp.Rest.csproj`, `Program.cs`, and `BrewUp.slnx` are the verified
 locations. Boundary/integration tests live in
@@ -257,8 +281,14 @@ subtracts active successful reservations exactly once
 before behavior and green afterward
 **And** the full Warehouse suite passes.
 
-**Traceability and ownership:** FR-005 through FR-008; FR-019; AD-1, AD-2,
-AD-6, AD-9, AD-10; BC-005 through BC-008, BC-011; AR-004 through AR-012,
+**Given** Story 1.3 changes production code
+**When** `Story13ImplementationConventionReview` inspects those changed files
+**Then** new GUIDs use `Guid.CreateVersion7()` and awaited tasks use
+`ConfigureAwait(false)`
+**And** the check runs after Warehouse GREEN verification.
+
+**Traceability and ownership:** FR-005 through FR-008; FR-019; NFR-005; AD-1, AD-2,
+AD-6, AD-9, AD-10, AD-11; BC-005 through BC-008, BC-011; AR-000, AR-004 through AR-012,
 AR-017. Contracts belong in Warehouse SharedKernel; decision behavior in
 Warehouse Domain; full-row assessment in Warehouse Facade ACL; outcome and
 availability projections in Warehouse ReadModel; tests in
@@ -303,8 +333,14 @@ cases, and duplicate confirmation
 **And** `ProjectAndPublishSalesOrderConfirmed` proves the Sales projection and
 integration boundary.
 
-**Traceability and ownership:** FR-009 through FR-012; FR-019; AD-1, AD-2,
-AD-7, AD-9, AD-10; BC-001, BC-002, BC-004, BC-006, BC-009, BC-010; AR-006
+**Given** Story 1.4 changes production code
+**When** `Story14ImplementationConventionReview` inspects those changed files
+**Then** new GUIDs use `Guid.CreateVersion7()` and awaited tasks use
+`ConfigureAwait(false)`
+**And** the check runs after Sales GREEN verification.
+
+**Traceability and ownership:** FR-009 through FR-012; FR-019; NFR-005; AD-1, AD-2,
+AD-7, AD-9, AD-10, AD-11; BC-001, BC-002, BC-004, BC-006, BC-009, BC-010; AR-000, AR-006
 through AR-012, AR-015, AR-017. Contracts belong in Sales SharedKernel,
 behavior in `SalesOrder` and Sales Domain handler, projection in Sales
 ReadModel, registration in Sales Facade, and tests in
@@ -322,8 +358,10 @@ exist.
 
 **Given** existing budget verification and order placement have completed
 **When** the saga advances
-**Then** it requests Payment authorization, waits for `PaymentAuthorized`,
-requests complete Warehouse reservation, waits for `StockReserved`, and sends
+**Then** it creates `PaymentAuthorizationId` with `Guid.CreateVersion7()`,
+requests Payment authorization, waits for `PaymentAuthorized`, creates
+`StockReservationId` with `Guid.CreateVersion7()`, requests complete Warehouse
+reservation, waits for `StockReserved`, and sends
 `ConfirmSalesOrder` with both IDs
 **And** completes only after `SalesOrderConfirmed`.
 
@@ -343,7 +381,8 @@ or expiry action.
 **Given** saga ordering and failure tests are written first
 **When** targeted and full Saga, Payment, Warehouse, and Sales suites run
 **Then** the new tests demonstrate red then green and all impacted suites pass
-**And** existing shipment timing is unchanged.
+**And** `PreserveExistingShipmentTriggerTimingAfterSagaRewire` proves the
+pre-existing shipment-trigger event and timing remain unchanged.
 
 **Given** the legacy availability-to-acceptance shortcut exists
 **When** this saga flow is rewired
@@ -353,11 +392,18 @@ confirmation flow
 **And** `OrderConfirmationArchitectureBoundaries` proves there is no competing
 acceptance path and no forbidden cross-module implementation reference.
 
-**Traceability and ownership:** FR-013 through FR-015; FR-019; AD-1, AD-2,
+**Given** Story 1.5 changes production code
+**When** `Story15ImplementationConventionReview` inspects those changed files
+**Then** both evidence IDs use `Guid.CreateVersion7()` and awaited tasks use
+`ConfigureAwait(false)`
+**And** the check runs after Saga GREEN verification.
+
+**Traceability and ownership:** FR-013 through FR-015; FR-019; NFR-005; AD-1, AD-2,
 AD-8, AD-10, AD-11; BC-001, BC-003 through BC-011; AR-012, AR-015, AR-017,
-AR-018.
+AR-018, AR-000.
 Saga-owned state/events/handlers live under `src/Sagas/`; Payment,
 Warehouse, and Sales decisions remain in their producing modules. Tests live in
 `src/Sagas/BrewUp.Sagas.Tests/Orchestrators/` and explicitly cover ordering,
 failure-without-compensation, duplicate outcomes, integration boundary
-publication, and the architecture fitness check above.
+publication, `PreserveExistingShipmentTriggerTimingAfterSagaRewire`, and the
+architecture fitness/convention checks above.

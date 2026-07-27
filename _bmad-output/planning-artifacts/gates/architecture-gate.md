@@ -46,4 +46,6 @@ observability policy not approved for this increment.
 Deterministic native spine lint returned `ok: true` with zero findings before
 this guard decision. The native Good-spine rubric, current-technology/brownfield
 reality lens, and adversarial divergence lens each returned `PASS` after clear
-review findings were corrected and all three lenses were rerun.
+review findings were corrected and all three lenses were rerun. The fix-round
+correlation-metadata and stable-request-replay clarifications were linted and
+reviewed again; lint remained clean and all three lenses returned `PASS`.

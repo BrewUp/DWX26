@@ -140,7 +140,8 @@ authorization, and unapproved provider policy.
 **Rule:** `RequestPaymentAuthorization` carries a stable
 `PaymentAuthorizationId` and Sales Order reference; Payment retains both and
 creates one pending `PaymentAuthorization`. Replaying the same stable request is
-a no-op. The simulated provider calls
+a no-op. The correlation ID remains command/event metadata used for message
+flow and is not retained as aggregate business state. The simulated provider calls
 `POST /v1/payment/authorizations/{authorizationId}/authorized` with a provider
 reference; the Facade sends `RecordPaymentAuthorized`; the aggregate alone
 emits `PaymentAuthorized`. A duplicate authorized outcome is a no-op.
@@ -263,6 +264,8 @@ src/BrewUp.Rest.Tests/Architecture/
 Payment architecture fitness tests cover six-project existence, solution
 membership, contract placement, host registration, allowed/forbidden
 references, and absence of Sales/Warehouse Domain or Infrastructure references.
+Payment domain specifications include
+`DoNotRequestPaymentAuthorizationTwice` for stable-request replay.
 Targeted module and saga tests, architecture tests, `src/BrewUp.slnx` build,
 full-suite classification, and harness artifact lint complete verification.
 

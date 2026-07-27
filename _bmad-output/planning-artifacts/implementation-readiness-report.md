@@ -89,8 +89,13 @@ and warnings: none.
 - Every story contains testable Given/When/Then criteria, exact upstream
   FR/AD/rule traceability, affected ownership/paths, and applicable domain,
   boundary/integration, and architecture tests.
-- Story 1.1 assigns NFR-005 to explicit static/code-review verification that
-  checks version-7 GUID creation and configured awaits across changed code.
+- Stories 1.1–1.5 each assign NFR-005 to an explicit per-story convention
+  review over only that story's changed production code.
+- Story 1.1 creates a compilable six-project/test shell before writing four
+  domain specifications and architecture coverage, so RED proves missing
+  behavior/composition rather than a missing project.
+- Story 1.2 requires its four boundary/integration tests to run RED before
+  callback, projection, persistence, and publication implementation.
 - Entities/projections are introduced only in the story that needs them.
 - The strict Epics and Stories Guard returned `PASS`.
 

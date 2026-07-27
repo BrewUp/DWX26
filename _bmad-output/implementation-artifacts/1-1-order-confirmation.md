@@ -23,77 +23,67 @@ later projection and provider-boundary behavior is added.
 
 1. Given no authorization exists for a stable `PaymentAuthorizationId`, when
    `RequestPaymentAuthorization` is handled, then Payment emits one
-   `PaymentAuthorizationRequested`, restores pending state, and retains only
-   its Payment ID, `SalesOrderReference`, and correlation ID.
-2. Given a pending authorization and an externally supplied provider reference,
+   `PaymentAuthorizationRequested` and restores its Payment ID,
+   `SalesOrderReference`, and pending state. Correlation ID remains
+   command/event metadata and is not retained as aggregate business state.
+2. Given the same stable authorization request was already applied, when it is
+   replayed, then Payment emits no second `PaymentAuthorizationRequested`.
+3. Given a pending authorization and an externally supplied provider reference,
    when `RecordPaymentAuthorized` is handled, then Payment emits one
    `PaymentAuthorized`; replaying the outcome emits no second event.
-3. Given Payment becomes an implemented authority, when this story completes,
+4. Given Payment becomes an implemented authority, when this story completes,
    then all six exact Payment projects exist and build:
    SharedKernel, Domain, ReadModel, Infrastructure, Facade, and Tests.
-4. Given the six projects exist, when solution/host composition is inspected,
+5. Given the six projects exist, when solution/host composition is inspected,
    then all six are under `/50 Modules/Payment/` in `src/BrewUp.slnx`,
    `PaymentModule` is present in the REST composition root, and the REST host
    references only Payment Facade.
-5. Given architecture fitness tests run, then they prove module/contract
+6. Given architecture fitness tests run, then they prove module/contract
    placement, solution and host membership, allowed references, and absence of
    Payment Domain references to Facade, ReadModel, Infrastructure, ASP.NET,
    MongoDB, RabbitMQ, Sales Domain, or Warehouse Domain.
-6. Given implementation begins, the named domain and architecture tests fail
-   before production implementation and pass afterward; the complete Payment
-   test project and affected REST architecture tests pass.
-7. Given changed production code creates GUIDs or awaits tasks, static/code
-   review confirms new GUIDs use `Guid.CreateVersion7()` and awaited tasks use
-   `ConfigureAwait(false)` unless an explicit architecture exception exists.
-8. No amount/currency, real provider execution, decline, timeout
+7. Given minimal six-project/test-harness shells compile but Payment behavior
+   and composition are absent, the four domain specifications and architecture
+   fitness test are written and run to meaningful RED before production
+   behavior; all pass after the minimum implementation.
+8. Given Story 1.1 changed production code creates GUIDs or awaits tasks,
+   `Story11ImplementationConventionReview` confirms new GUIDs use
+   `Guid.CreateVersion7()` and awaited tasks use `ConfigureAwait(false)` unless
+   an explicit architecture exception exists.
+9. No amount/currency, real provider execution, decline, timeout
    interpretation, void, refund, retry, notification, expiry, reservation,
    confirmation, shipment, or invoicing behavior is introduced.
 
 ## Tasks / Subtasks
 
-- [ ] Task 1 — Establish RED domain specifications (AC: 1, 2, 6)
-  - [ ] Create
-    `src/Payment/BrewUp.Payment.Tests/Domain/RequestPaymentAuthorizationSuccessfully.cs`.
-  - [ ] Create
-    `src/Payment/BrewUp.Payment.Tests/Domain/RecordPaymentAuthorizedSuccessfully.cs`.
-  - [ ] Create
-    `src/Payment/BrewUp.Payment.Tests/Domain/DoNotAuthorizePaymentTwice.cs`.
-  - [ ] Seed `PaymentAuthorizationRequested` for outcome tests; seed
-    `PaymentAuthorized` for the duplicate test.
-  - [ ] Run the targeted tests before implementation and record the expected
-    compile/test failure caused by absent Payment contracts/domain.
+- [ ] Task 1 — Create a compilable six-project/test harness shell (AC: 4, 7)
+  - [ ] Create the exact SharedKernel, Domain, ReadModel, Infrastructure,
+    Facade, Tests `.csproj` files at the six AD-3 paths.
+  - [ ] Wire only AD-4 project references and repository-pinned test packages.
+    The Tests project must be runnable and reference the empty Domain and
+    SharedKernel shells.
+  - [ ] Do not add domain contracts, aggregate behavior, helpers, solution
+    membership, or host registration yet. Building the shells is setup, not
+    GREEN.
 
-- [ ] Task 2 — Establish RED architecture fitness coverage (AC: 3–6)
-  - [ ] Create
-    `src/Payment/BrewUp.Payment.Tests/Architecture/PaymentModuleStructureAndComposition.cs`.
-  - [ ] Assert all six exact project/assembly paths, `/50 Modules/Payment/`
-    solution membership, `PaymentModule`/Program registration, SharedKernel
-    contract placement, and the AD-4 allowed/forbidden dependency graph.
-  - [ ] Explicitly reject Domain -> Facade/ReadModel/Infrastructure/ASP.NET/
-    MongoDB/RabbitMQ and Payment -> Sales/Warehouse Domain/Infrastructure.
-  - [ ] Run the architecture test before project creation and record RED.
+- [ ] Task 2 — Write and run meaningful RED architecture coverage (AC: 4–7)
+  - [ ] Create `Architecture/PaymentModuleStructureAndComposition.cs`.
+  - [ ] Assert solution membership, `PaymentModule`/Program registration,
+    contract placement, and AD-4 allowed/forbidden references.
+  - [ ] Run it immediately after the shells compile, while solution/host
+    composition and contracts are absent; record an executed behavior/structure
+    assertion failure before any compile-failing domain specifications exist.
 
-- [ ] Task 3 — Create the six-project module shell (AC: 3, 5)
-  - [ ] Create
-    `src/Payment/BrewUp.Payment.SharedKernel/BrewUp.Payment.SharedKernel.csproj`.
-  - [ ] Create
-    `src/Payment/BrewUp.Payment.Domain/BrewUp.Payment.Domain.csproj`.
-  - [ ] Create
-    `src/Payment/BrewUp.Payment.ReadModel/BrewUp.Payment.ReadModel.csproj`.
-  - [ ] Create
-    `src/Payment/BrewUp.Payment.Infrastructure/BrewUp.Payment.Infrastructure.csproj`.
-  - [ ] Create
-    `src/Payment/BrewUp.Payment.Facade/BrewUp.Payment.Facade.csproj`.
-  - [ ] Create
-    `src/Payment/BrewUp.Payment.Tests/BrewUp.Payment.Tests.csproj`.
-  - [ ] Follow AD-4 references exactly. Do not add an Entities project or empty
-    folders unrelated to this story.
-  - [ ] Add only minimal helpers needed for a compiling, composable module:
-    `DomainHelper.cs`, `PaymentReadModelHelper.cs`, `InfrastructureHelper.cs`,
-    and `PaymentFacadeHelper.cs`. Story 1.2 owns their complete projection,
-    persistence, callback, and integration-event registrations.
+- [ ] Task 3 — Write and run meaningful RED domain specifications (AC: 1–3, 7)
+  - [ ] Create `RequestPaymentAuthorizationSuccessfully`.
+  - [ ] Create `DoNotRequestPaymentAuthorizationTwice`.
+  - [ ] Create `RecordPaymentAuthorizedSuccessfully`.
+  - [ ] Create `DoNotAuthorizePaymentTwice`.
+  - [ ] Seed request/outcome history for both replay tests.
+  - [ ] Run the four tests from the existing Tests project and record RED due to
+    missing Payment contracts/domain behavior, not project-not-found.
 
-- [ ] Task 4 — Implement Payment-owned contracts (AC: 1, 2, 8)
+- [ ] Task 4 — Implement Payment-owned contracts (AC: 1–3, 9)
   - [ ] Create
     `SharedKernel/DomainIds/PaymentAuthorizationId.cs` deriving from
     `Muflone.Core.DomainId`.
@@ -106,13 +96,14 @@ later projection and provider-boundary behavior is added.
     `PaymentAuthorized.cs`, and the contract
     `PaymentAuthorizedIntegrationEvent.cs`; Story 1.2 owns publishing it.
   - [ ] Contracts contain only approved IDs, Sales Order reference, provider
-    reference, and correlation data. Do not add amount/currency or unapproved
-    outcome types.
+    reference, and correlation metadata. Correlation ID stays on command/events,
+    not aggregate business state.
 
-- [ ] Task 5 — Implement the event-sourced aggregate and handlers (AC: 1, 2)
+- [ ] Task 5 — Implement the event-sourced aggregate and handlers (AC: 1–3)
   - [ ] Create `Domain/Entities/PaymentAuthorization.cs`.
   - [ ] `Request(...)` raises `PaymentAuthorizationRequested`; apply restores
-    ID, Sales Order reference, and pending state.
+    ID, Sales Order reference, and pending state. Replaying the stable request
+    is a no-op.
   - [ ] `RecordAuthorized(...)` raises `PaymentAuthorized` once; an
     already-authorized aggregate returns without raising an event.
   - [ ] Create
@@ -123,7 +114,10 @@ later projection and provider-boundary behavior is added.
   - [ ] Use stable IDs from commands; use `Guid.CreateVersion7()` only where a
     new technical GUID is actually required.
 
-- [ ] Task 6 — Add minimal solution and REST composition (AC: 4, 5)
+- [ ] Task 6 — Add minimal helpers, solution, and REST composition (AC: 4–6)
+  - [ ] Add only minimal compiling `DomainHelper`,
+    `PaymentReadModelHelper`, `InfrastructureHelper`, and
+    `PaymentFacadeHelper`; Story 1.2 completes their behavior.
   - [ ] Add all six project paths beneath `/50 Modules/Payment/` in
     `src/BrewUp.slnx`.
   - [ ] Create `src/BrewUp.Rest/Module/PaymentModule.cs` implementing `IModule`.
@@ -134,15 +128,15 @@ later projection and provider-boundary behavior is added.
     Story-1.1-safe Facade shell; it must not expose a callback endpoint or
     publish integration events. Story 1.2 owns those behaviors.
 
-- [ ] Task 7 — Verify GREEN and conventions (AC: 1–8)
-  - [ ] Run the three targeted Payment domain specifications.
+- [ ] Task 7 — Verify GREEN and conventions (AC: 1–9)
+  - [ ] Run the four targeted Payment domain specifications.
   - [ ] Run `PaymentModuleStructureAndComposition`.
   - [ ] Run the full Payment Tests project.
   - [ ] Run affected REST architecture tests without starting
     infrastructure-dependent fixtures.
   - [ ] Build `src/BrewUp.slnx`.
-  - [ ] Run `ImplementationConventionReview` over Story 1.1 changed production
-    files for `Guid.CreateVersion7()` and `ConfigureAwait(false)`.
+  - [ ] Run `Story11ImplementationConventionReview` over only Story 1.1 changed
+    production files for `Guid.CreateVersion7()` and `ConfigureAwait(false)`.
   - [ ] Confirm the changed-file list contains no Sales, Warehouse, Sagas, real
     provider, compensation, retry, timeout, shipment, or invoice behavior.
 
@@ -216,18 +210,21 @@ public sealed class RequestPaymentAuthorization(
 ```
 
 `RecordPaymentAuthorized` carries the Payment ID, externally supplied provider
-reference, and correlation/message ID. `PaymentAuthorized` carries the same
-owned evidence. Do not add policy fields not present upstream.
+reference, and correlation/message ID. Correlation is message/event metadata,
+not retained aggregate business state. `PaymentAuthorized` carries the approved
+owned evidence and metadata. Do not add policy fields not present upstream.
 
 ### Testing requirements
 
-- TDD order is mandatory: write/run the three domain specifications and the
-  architecture fitness test before implementation; capture RED, implement the
-  minimum behavior, then capture GREEN.
+- TDD order is mandatory: create compilable project/test shells; write and
+  execute the architecture fitness test to assertion RED; then write/run the
+  four domain specifications against missing behavior to compile/test RED;
+  implement the minimum behavior, then capture GREEN.
 - Command handlers contain no business policy.
 - Architecture coverage must check file/project placement, project references,
   contract placement, solution membership, and REST registration.
-- Static/code review covers NFR-005 across all changed production files.
+- Static/code review covers NFR-005 only across Story 1.1 changed production
+  files; every later story owns its own convention verification.
 - Infrastructure-dependent integration fixtures are not required for this
   story; Story 1.2 adds persistence/boundary tests.
 
@@ -277,7 +274,7 @@ project is explicitly not used.
 | Event-sourced pending/authorized behavior | FR-002–FR-004; AD-1, AD-5 | BC-003; BC-004; BC-008; AR-008; AR-012 |
 | Dependencies and composition | FR-018; AD-4 | AR-011; AR-013–AR-017 |
 | TDD and conventions | FR-019; NFR-005; AD-10, AD-11 | AR-000; AR-012 |
-| Excluded policy | AC8; approved design Out of Scope | BC-000; BC-003; BC-011 |
+| Excluded policy | AC9; approved design Out of Scope | BC-000; BC-003; BC-011 |
 
 ## Completion status
 
@@ -295,4 +292,3 @@ To be recorded by the implementation agent.
 ### Completion Notes List
 
 ### File List
-

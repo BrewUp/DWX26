@@ -27,7 +27,11 @@ remains out of scope and activates the story's stop conditions.
   AR-000–AR-017.
 - Paths → six exact Payment projects, `/50 Modules/Payment/` solution
   membership, `PaymentModule`, `Program.cs`, and Facade-only REST reference.
-- AC1–AC8 → three named domain specifications,
-  `PaymentModuleStructureAndComposition`, RED-before-code, GREEN Payment/REST
-  verification, solution build, convention review, and exclusion review.
+- AC1–AC9 → four named domain specifications including
+  `DoNotRequestPaymentAuthorizationTwice`, `PaymentModuleStructureAndComposition`,
+  compilable project/test shells before architecture assertion RED and then
+  domain RED, GREEN Payment/REST verification, solution build, AC8's Story
+  1.1-scoped convention review, and AC9's exclusion/stop-condition review.
 
+The fix-round strict Story Guard returned `PASS` after this execution sequence
+and AC traceability were corrected and rerun.
