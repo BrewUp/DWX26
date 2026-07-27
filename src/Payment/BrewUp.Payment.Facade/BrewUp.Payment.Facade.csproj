@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\BrewUp.Payment.Domain\BrewUp.Payment.Domain.csproj" />
+    <ProjectReference Include="..\BrewUp.Payment.Infrastructure\BrewUp.Payment.Infrastructure.csproj" />
+    <ProjectReference Include="..\BrewUp.Payment.ReadModel\BrewUp.Payment.ReadModel.csproj" />
+    <ProjectReference Include="..\BrewUp.Payment.SharedKernel\BrewUp.Payment.SharedKernel.csproj" />
+  </ItemGroup>
+
+</Project>
