@@ -2,17 +2,18 @@
 title: "Story 1.2: Complete Payment Projection and Provider Callback Behavior"
 storyId: "1.2"
 storyKey: "1-2-complete-payment-projection-and-provider-callback-behavior"
-status: ready-for-dev
+status: review
 created: 2026-07-27
 updated: 2026-07-27
 epic: "Evidence-Backed Sales Order Confirmation"
 previous_story: "_bmad-output/implementation-artifacts/1-1-order-confirmation.md"
 previous_story_head: 7d3cd354b2ab7289b64aa254e94dcb126217980b
+baseline_commit: 2dad5dd54851dff8a74a1bc179d2b832ee553533
 ---
 
 # Story 1.2: Complete Payment Projection and Provider Callback Behavior
 
-Status: ready-for-dev
+Status: review
 
 ## Story
 
@@ -84,89 +85,89 @@ through Payment-owned integration boundaries.
 
 ## Tasks / Subtasks
 
-- [ ] Task 1 — Add all four boundary/integration tests before production
+- [x] Task 1 — Add all four boundary/integration tests before production
   changes (AC: 2–6, 9)
-  - [ ] Record the implementation baseline with `git rev-parse HEAD`; do not
+  - [x] Record the implementation baseline with `git rev-parse HEAD`; do not
     modify a Story 1.2 production file before the RED run.
-  - [ ] Create
+  - [x] Create
     `src/Payment/BrewUp.Payment.Tests/ReadModel/ProjectPaymentAuthorizationRequested.cs`
     with test class/specification name `ProjectPendingAuthorization`.
-  - [ ] Create
+  - [x] Create
     `src/Payment/BrewUp.Payment.Tests/Facade/RecordAuthorizedProviderOutcome.cs`
     with test class/specification name `RecordAuthorizedCallbackBoundary`.
-  - [ ] Create
+  - [x] Create
     `src/Payment/BrewUp.Payment.Tests/ReadModel/ProjectAndPublishAuthorizedOutcome.cs`
     with test class/specification name
     `ProjectAndPublishAuthorizedOutcome`; it must prove projection update,
     one integration publication, and no second publication after duplicate
     callback delivery.
-  - [ ] Create
+  - [x] Create
     `src/Payment/BrewUp.Payment.Tests/Infrastructure/PaymentPersistenceWiring.cs`
     with test class/specification name `PaymentPersistenceWiring`; verify
     Payment-specific DI and keyed Mongo persister wiring without requiring a
     live MongoDB, RabbitMQ, or EventStore process.
-  - [ ] Update the Tests project references only as needed for these tests to
+  - [x] Update the Tests project references only as needed for these tests to
     see Payment's owned layers. Test scaffolding is allowed before RED;
     production behavior is not.
 
-- [ ] Task 2 — Execute and record mandatory meaningful RED (AC: 9)
-  - [ ] Run all four named tests in one focused command:
+- [x] Task 2 — Execute and record mandatory meaningful RED (AC: 9)
+  - [x] Run all four named tests in one focused command:
 
     ```powershell
     dotnet test src/Payment/BrewUp.Payment.Tests/BrewUp.Payment.Tests.csproj --filter "FullyQualifiedName~RecordAuthorizedCallbackBoundary|FullyQualifiedName~ProjectPendingAuthorization|FullyQualifiedName~ProjectAndPublishAuthorizedOutcome|FullyQualifiedName~PaymentPersistenceWiring"
     ```
 
-  - [ ] Record the executed failure. An expected compile failure must name
+  - [x] Record the executed failure. An expected compile failure must name
     absent Story 1.2 types/members; an assertion failure must identify absent
     projection/callback/publication/persistence wiring. A project-not-found,
     restore, syntax, or unrelated infrastructure failure is not acceptable
     RED.
-  - [ ] Stop if any Story 1.2 production behavior was already added before
+  - [x] Stop if any Story 1.2 production behavior was already added before
     this run or if all four tests do not participate in the focused run.
 
-- [ ] Task 3 — Add only the minimum registered Payment behavior (AC: 1–7)
-  - [ ] Complete `DomainHelper` by registering Story 1.1's two existing
+- [x] Task 3 — Add only the minimum registered Payment behavior (AC: 1–7)
+  - [x] Complete `DomainHelper` by registering Story 1.1's two existing
     command handlers. Do not move or duplicate domain behavior in Facade,
     ReadModel, Infrastructure, or REST.
-  - [ ] Add the Payment projection DTO, query, service, and two projection
+  - [x] Add the Payment projection DTO, query, service, and two projection
     handlers. The DTO derives from the repository's `DtoBase`, uses inherited
     `Id`, and adds `SalesOrderId`, `Status`, and nullable
     `ProviderReference`; pending and authorized values are lower-case as
     specified by the Task 3 brief.
-  - [ ] Add the Payment Mongo `IPersister` using the existing module-keyed
+  - [x] Add the Payment Mongo `IPersister` using the existing module-keyed
     persister pattern and database name `Payment`. Reuse the host-registered
     `IMongoClient`; do not construct a client or connection string.
-  - [ ] Complete `PaymentReadModelHelper` and `InfrastructureHelper` with
+  - [x] Complete `PaymentReadModelHelper` and `InfrastructureHelper` with
     query/service, domain-event-handler, and keyed-persister registrations.
-  - [ ] Add `IPaymentFacade`, `PaymentFacade`, callback JSON, and endpoint.
+  - [x] Add `IPaymentFacade`, `PaymentFacade`, callback JSON, and endpoint.
     `PaymentFacade.RecordAuthorizedAsync(...)` sends the existing
     `RecordPaymentAuthorized` command through `IServiceBus` with a new
     `Guid.CreateVersion7()` message/correlation ID and uses
     `ConfigureAwait(false)`.
-  - [ ] Keep `PaymentAuthorizedEventHandler` responsible for projection state
+  - [x] Keep `PaymentAuthorizedEventHandler` responsible for projection state
     and `PaymentAuthorizedIntegrationEventPublisher` responsible for
     publishing the existing SharedKernel integration event. Preserve the
     domain event's correlation metadata; do not create a second outcome
     contract or publish from the endpoint.
-  - [ ] Complete `PaymentFacadeHelper` by composing Domain, ReadModel,
+  - [x] Complete `PaymentFacadeHelper` by composing Domain, ReadModel,
     Infrastructure, Facade, and publisher registrations once. Do not register
     global Mongo/EventStore/RabbitMQ infrastructure again.
-  - [ ] Update the existing `PaymentModule.Configure(...)` to map the endpoint.
+  - [x] Update the existing `PaymentModule.Configure(...)` to map the endpoint.
     Do not add another `PaymentModule` or modify `Program.cs` merely to
     re-register it.
 
-- [ ] Task 4 — Prove focused GREEN, then preserve architecture (AC: 2–9)
-  - [ ] Re-run the exact four-test filter and require all four named tests to
+- [x] Task 4 — Prove focused GREEN, then preserve architecture (AC: 2–9)
+  - [x] Re-run the exact four-test filter and require all four named tests to
     pass.
-  - [ ] Update the existing
+  - [x] Update the existing
     `PaymentModuleStructureAndComposition` expectations from Story 1.1's
     intentionally empty callback shell to Story 1.2's completed mapping and
     owned-layer test references.
-  - [ ] Keep its existing checks for six-project placement, contract
+  - [x] Keep its existing checks for six-project placement, contract
     placement, solution membership, host registration, governed dependency
     item types, Facade-only REST reference, and forbidden Domain/cross-context
     dependencies.
-  - [ ] Run:
+  - [x] Run:
 
     ```powershell
     dotnet test src/Payment/BrewUp.Payment.Tests/BrewUp.Payment.Tests.csproj
@@ -174,22 +175,22 @@ through Payment-owned integration boundaries.
     dotnet build src/BrewUp.slnx
     ```
 
-  - [ ] Do not start infrastructure-dependent REST integration fixtures.
+  - [x] Do not start infrastructure-dependent REST integration fixtures.
     If broader solution tests are run, classify known brownfield
     infrastructure/Purchases failures separately and do not conceal a new
     Payment regression.
 
-- [ ] Task 5 — Run the post-GREEN convention and scope gates (AC: 10, 11)
-  - [ ] Run `Story12ImplementationConventionReview` only after focused and
+- [x] Task 5 — Run the post-GREEN convention and scope gates (AC: 10, 11)
+  - [x] Run `Story12ImplementationConventionReview` only after focused and
     full Payment GREEN. Derive the production-file set from the recorded
     baseline; exclude tests, story/gate documents, and unrelated pre-existing
     worktree files.
-  - [ ] Inspect every GUID creation and every `await` in that set. Correct
+  - [x] Inspect every GUID creation and every `await` in that set. Correct
     `Guid.NewGuid()` and missing `ConfigureAwait(false)` before rerunning GREEN.
-  - [ ] Verify `Program.cs`, `BrewUp.Rest.csproj`, and `BrewUp.slnx` retain
+  - [x] Verify `Program.cs`, `BrewUp.Rest.csproj`, and `BrewUp.slnx` retain
     Story 1.1's single valid composition and that no Sales, Warehouse, Sagas,
     real-provider, compensation, or other excluded policy changed.
-  - [ ] Run the repository harness validators/artifact lint required by FR-019
+  - [x] Run the repository harness validators/artifact lint required by FR-019
     if they are part of the implementation handoff; any story-document lint
     must target this exact story path or artifact root without selecting Story
     1.1 by guess.
@@ -444,8 +445,81 @@ created. Story is ready-for-dev only after the strict story guard returns
 
 ### Agent Model Used
 
+GPT-5.6 Codex
+
 ### Debug Log References
+
+- Baseline: `2dad5dd54851dff8a74a1bc179d2b832ee553533`.
+- Mandatory RED: the exact four-test filter reached all Payment projects and
+  failed compilation on absent Story 1.2 DTO, service, handler, endpoint, and
+  publisher types. No restore, syntax, project, or infrastructure failure
+  contributed to the accepted RED.
+- Focused GREEN: 4/4 canonical tests passed.
+- Full Payment GREEN: 23/23 tests passed.
+- REST architecture GREEN: 1/1 passed with `--no-build --no-restore`; no
+  infrastructure-dependent REST fixture was started for the required gate.
+- Solution build: succeeded with 0 errors and 174 existing package-audit and
+  brownfield compiler warnings after approved NuGet configuration access.
+- Broader no-build solution test classification: Payment remained 23/23;
+  the known Purchases `SubmitPurchaseOrderSuccessfully` baseline failed with
+  `NotImplementedException`; other reported module suites passed.
+- `Story12ImplementationConventionReview`: one GUID site used
+  `Guid.CreateVersion7()` and all 16 await sites used
+  `ConfigureAwait(false)`. Host composition files retained Story 1.1 state,
+  with one `PaymentModule` registration and one endpoint mapping.
+- The exact Story 1.2 strict story guard was already `PASS`. Static installed
+  core cleanup/full harness validation remains deliberately deferred to Task 7
+  by the governing implementation plan.
 
 ### Completion Notes List
 
+- Added the rebuildable pending/authorized Payment authorization projection,
+  Mongo query/persister, projection services, and owned event handlers.
+- Added the provider-simulator authorized callback and Facade command boundary
+  without provider decision, amount/currency, timeout, retry, void/refund, or
+  compensation policy.
+- Published the existing `PaymentAuthorizedIntegrationEvent` only from the
+  owned domain event and preserved correlation metadata.
+- Preserved duplicate callback idempotency through the existing aggregate
+  guard: the second callback emits no domain event, projection update, or
+  integration publication.
+- Completed keyed `payment` persistence and all owned DI/endpoint composition
+  while reusing host-global Mongo, EventStore, and RabbitMQ registrations.
+- Preserved BC-003/BC-004/BC-008/BC-011 and
+  AR-001/AR-002/AR-009–AR-017 boundaries.
+
 ### File List
+
+- `_bmad-output/implementation-artifacts/1-2-complete-payment-projection-and-provider-callback-behavior.md`
+- `src/BrewUp.Rest/Module/PaymentModule.cs`
+- `src/Payment/BrewUp.Payment.Domain/DomainHelper.cs`
+- `src/Payment/BrewUp.Payment.Facade/BrewUp.Payment.Facade.csproj`
+- `src/Payment/BrewUp.Payment.Facade/Endpoints/PaymentEndpoints.cs`
+- `src/Payment/BrewUp.Payment.Facade/EventHandlers/PaymentAuthorizedIntegrationEventPublisher.cs`
+- `src/Payment/BrewUp.Payment.Facade/ExternalContracts/ProviderAuthorizationJson.cs`
+- `src/Payment/BrewUp.Payment.Facade/IPaymentFacade.cs`
+- `src/Payment/BrewUp.Payment.Facade/PaymentFacade.cs`
+- `src/Payment/BrewUp.Payment.Facade/PaymentFacadeHelper.cs`
+- `src/Payment/BrewUp.Payment.Infrastructure/BrewUp.Payment.Infrastructure.csproj`
+- `src/Payment/BrewUp.Payment.Infrastructure/InfrastructureHelper.cs`
+- `src/Payment/BrewUp.Payment.Infrastructure/PaymentPersister.cs`
+- `src/Payment/BrewUp.Payment.ReadModel/BrewUp.Payment.ReadModel.csproj`
+- `src/Payment/BrewUp.Payment.ReadModel/Dtos/PaymentAuthorization.cs`
+- `src/Payment/BrewUp.Payment.ReadModel/EventHandlers/PaymentAuthorizationRequestedEventHandler.cs`
+- `src/Payment/BrewUp.Payment.ReadModel/EventHandlers/PaymentAuthorizedEventHandler.cs`
+- `src/Payment/BrewUp.Payment.ReadModel/PaymentReadModelHelper.cs`
+- `src/Payment/BrewUp.Payment.ReadModel/Queries/PaymentAuthorizationQueries.cs`
+- `src/Payment/BrewUp.Payment.ReadModel/Services/IPaymentAuthorizationService.cs`
+- `src/Payment/BrewUp.Payment.ReadModel/Services/PaymentAuthorizationService.cs`
+- `src/Payment/BrewUp.Payment.Tests/Architecture/PaymentModuleStructureAndComposition.cs`
+- `src/Payment/BrewUp.Payment.Tests/BrewUp.Payment.Tests.csproj`
+- `src/Payment/BrewUp.Payment.Tests/Facade/RecordAuthorizedProviderOutcome.cs`
+- `src/Payment/BrewUp.Payment.Tests/Infrastructure/PaymentPersistenceWiring.cs`
+- `src/Payment/BrewUp.Payment.Tests/ReadModel/ProjectAndPublishAuthorizedOutcome.cs`
+- `src/Payment/BrewUp.Payment.Tests/ReadModel/ProjectPaymentAuthorizationRequested.cs`
+
+## Change Log
+
+- 2026-07-27: Completed Story 1.2 Payment projection, keyed persistence,
+  provider callback, integration publication, composition, architecture
+  coverage, and RED/GREEN verification.

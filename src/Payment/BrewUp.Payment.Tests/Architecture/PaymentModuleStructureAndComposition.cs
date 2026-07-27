@@ -132,12 +132,16 @@ public sealed class PaymentModuleStructureAndComposition
             DomainForbiddenDependencies);
         AssertProjectDependencies(
             "Payment/BrewUp.Payment.ReadModel/BrewUp.Payment.ReadModel.csproj",
-            ["../BrewUp.Payment.SharedKernel/BrewUp.Payment.SharedKernel.csproj"],
+            [
+                "../../BrewUp.Shared/BrewUp.Shared.csproj",
+                "../BrewUp.Payment.SharedKernel/BrewUp.Payment.SharedKernel.csproj"
+            ],
             ForbiddenDependenciesForPaymentLayers(
                 "Domain", "Infrastructure", "Facade", "Tests"));
         AssertProjectDependencies(
             "Payment/BrewUp.Payment.Infrastructure/BrewUp.Payment.Infrastructure.csproj",
             [
+                "../../BrewUp.Shared/BrewUp.Shared.csproj",
                 "../BrewUp.Payment.Domain/BrewUp.Payment.Domain.csproj",
                 "../BrewUp.Payment.SharedKernel/BrewUp.Payment.SharedKernel.csproj"
             ],
@@ -154,7 +158,11 @@ public sealed class PaymentModuleStructureAndComposition
         AssertProjectDependencies(
             "Payment/BrewUp.Payment.Tests/BrewUp.Payment.Tests.csproj",
             [
+                "../../BrewUp.Shared/BrewUp.Shared.csproj",
                 "../BrewUp.Payment.Domain/BrewUp.Payment.Domain.csproj",
+                "../BrewUp.Payment.Facade/BrewUp.Payment.Facade.csproj",
+                "../BrewUp.Payment.Infrastructure/BrewUp.Payment.Infrastructure.csproj",
+                "../BrewUp.Payment.ReadModel/BrewUp.Payment.ReadModel.csproj",
                 "../BrewUp.Payment.SharedKernel/BrewUp.Payment.SharedKernel.csproj"
             ],
             CrossContextForbiddenDependencies);
@@ -204,10 +212,10 @@ public sealed class PaymentModuleStructureAndComposition
         var module = File.ReadAllText(modulePath);
         Assert.Contains("class PaymentModule : IModule", module, StringComparison.Ordinal);
         Assert.Contains("AddPaymentFacade", module, StringComparison.Ordinal);
-        Assert.DoesNotContain("MapPaymentEndpoints", module, StringComparison.Ordinal);
+        Assert.Equal(1, CountOccurrences(module, "MapPaymentEndpoints"));
 
         var program = File.ReadAllText(Path.Combine(RepositoryRoot, "src", "BrewUp.Rest", "Program.cs"));
-        Assert.Contains("new PaymentModule()", program, StringComparison.Ordinal);
+        Assert.Equal(1, CountOccurrences(program, "new PaymentModule()"));
 
         var restProject = XDocument.Load(
             Path.Combine(RepositoryRoot, "src", "BrewUp.Rest", "BrewUp.Rest.csproj"));
@@ -302,6 +310,9 @@ public sealed class PaymentModuleStructureAndComposition
     }
 
     private static string Normalize(string path) => path.Replace('\\', '/');
+
+    private static int CountOccurrences(string value, string expected) =>
+        value.Split(expected, StringSplitOptions.None).Length - 1;
 
     private sealed record DependencyItem(string ItemType, string Include);
 }

@@ -1,4 +1,5 @@
 using BrewUp.Payment.Facade;
+using BrewUp.Payment.Facade.Endpoints;
 
 namespace BrewUp.Rest.Module;
 
@@ -14,5 +15,9 @@ public class PaymentModule : IModule
         return builder.Services;
     }
 
-    public WebApplication Configure(WebApplication app) => app;
+    public WebApplication Configure(WebApplication app)
+    {
+        app.MapPaymentEndpoints();
+        return app;
+    }
 }

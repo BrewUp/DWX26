@@ -27,7 +27,11 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\BrewUp.Shared\BrewUp.Shared.csproj" />
     <ProjectReference Include="..\BrewUp.Payment.Domain\BrewUp.Payment.Domain.csproj" />
+    <ProjectReference Include="..\BrewUp.Payment.Facade\BrewUp.Payment.Facade.csproj" />
+    <ProjectReference Include="..\BrewUp.Payment.Infrastructure\BrewUp.Payment.Infrastructure.csproj" />
+    <ProjectReference Include="..\BrewUp.Payment.ReadModel\BrewUp.Payment.ReadModel.csproj" />
     <ProjectReference Include="..\BrewUp.Payment.SharedKernel\BrewUp.Payment.SharedKernel.csproj" />
   </ItemGroup>
 
