@@ -80,12 +80,18 @@ public sealed class PaymentPersister(
         try
         {
             var collection = _database.GetCollection<T>(typeof(T).Name);
-            await collection
+            var replaceResult = await collection
                 .ReplaceOneAsync(
                     projection => projection.Id == entity.Id,
                     entity,
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
+            if (!replaceResult.IsAcknowledged || replaceResult.MatchedCount == 0)
+            {
+                return Result<bool>.Error(
+                    $"{typeof(T).Name} with ID {entity.Id} was not replaced.");
+            }
+
             return Result<bool>.Success(true);
         }
         catch (Exception exception)

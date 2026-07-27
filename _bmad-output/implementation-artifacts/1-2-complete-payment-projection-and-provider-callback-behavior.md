@@ -470,6 +470,16 @@ GPT-5.6 Codex
 - The exact Story 1.2 strict story guard was already `PASS`. Static installed
   core cleanup/full harness validation remains deliberately deferred to Task 7
   by the governing implementation plan.
+- Review-fix RED: the strengthened exact Story 1.2 filter ran 8 tests with
+  3 expected failures: both projection handlers acknowledged unsuccessful
+  persistence and a zero-match Mongo replacement returned success. The mapped
+  callback and full scoped DI-resolution tests passed against existing
+  production behavior, proving those findings were test-coverage gaps.
+- Review-fix GREEN: exact Story 1.2 filter 8/8, full Payment 27/27, REST
+  architecture 1/1, and solution build 0 errors. `git diff --check` passed.
+- Review-fix `Story12ImplementationConventionReview`: the 17 Task 3 production
+  files retained one UUIDv7 site and all 16 awaited tasks use
+  `ConfigureAwait(false)`.
 
 ### Completion Notes List
 
@@ -487,6 +497,18 @@ GPT-5.6 Codex
   while reusing host-global Mongo, EventStore, and RabbitMQ registrations.
 - Preserved BC-003/BC-004/BC-008/BC-011 and
   AR-001/AR-002/AR-009–AR-017 boundaries.
+- Projection handlers now propagate failed or false persistence results as
+  Muflone `PersistenceException`; Mongo replacement reports an error when the
+  write is unacknowledged or the projection has vanished. No retry was added.
+- The callback boundary test now invokes the mapped `RequestDelegate` and
+  verifies route/body propagation, HTTP 202 location/result, and HTTP 400
+  error mapping.
+- Persistence composition now proves exact scoped registrations, builds with
+  scope validation and fake host-global dependencies, and resolves the keyed
+  persister, service, Facade, command handlers, projection handlers, and
+  integration publisher without live infrastructure.
+- Projection and integration-publication handlers remain independent event
+  consumers; no transactional publication ordering or coupling was invented.
 
 ### File List
 
@@ -523,3 +545,6 @@ GPT-5.6 Codex
 - 2026-07-27: Completed Story 1.2 Payment projection, keyed persistence,
   provider callback, integration publication, composition, architecture
   coverage, and RED/GREEN verification.
+- 2026-07-27: Addressed three Important review findings with persistence
+  failure propagation, mapped callback execution coverage, and validated
+  scoped DI resolution.

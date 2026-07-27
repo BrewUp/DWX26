@@ -84,10 +84,39 @@ public sealed class ProjectAndPublishAuthorizedOutcome
             MessageHelpers.GetCorrelationId(integrationEvent));
     }
 
+    [Fact]
+    public async Task FailedAuthorizedProjectionIsPropagatedAsPersistenceFailure()
+    {
+        var authorizationId = new PaymentAuthorizationId(Guid.CreateVersion7().ToString());
+        var persister = new InMemoryPersister
+        {
+            UpdateResult = Result<bool>.Error("update failed")
+        };
+        var service = new PaymentAuthorizationService(persister);
+        await service.CreatePendingAsync(
+            authorizationId,
+            new SalesOrderReference(Guid.CreateVersion7().ToString()),
+            CancellationToken.None);
+        var handler = new PaymentAuthorizedEventHandler(
+            service,
+            NullLoggerFactory.Instance);
+
+        var exception = await Assert.ThrowsAsync<PersistenceException>(() =>
+            handler.HandleAsync(
+                new PaymentAuthorized(
+                    authorizationId,
+                    "provider-auth-123",
+                    Guid.CreateVersion7()),
+                CancellationToken.None));
+
+        Assert.Contains("authorized payment projection", exception.Message);
+    }
+
     private sealed class InMemoryPersister : IPersister
     {
         public PaymentProjection? Stored { get; private set; }
         public int UpdateCount { get; private set; }
+        public Result<bool> UpdateResult { get; init; } = Result<bool>.Success(true);
 
         public Task<Result<T>> GetByIdAsync<T>(string id, CancellationToken cancellationToken)
             where T : DtoBase =>
@@ -107,7 +136,7 @@ public sealed class ProjectAndPublishAuthorizedOutcome
         {
             Stored = Assert.IsType<PaymentProjection>(entity);
             UpdateCount++;
-            return Task.FromResult(Result<bool>.Success(true));
+            return Task.FromResult(UpdateResult);
         }
 
         public Task<Result<bool>> DeleteAsync<T>(T entity, CancellationToken cancellationToken)

@@ -7,6 +7,7 @@ using BrewUp.Payment.SharedKernel.Messages.Events;
 using BrewUp.Shared.ReadModel;
 using Lena.Core;
 using Microsoft.Extensions.Logging.Abstractions;
+using Muflone.Persistence;
 using PaymentProjection = BrewUp.Payment.ReadModel.Dtos.PaymentAuthorization;
 
 namespace BrewUp.Payment.Tests.ReadModel;
@@ -38,9 +39,32 @@ public sealed class ProjectPendingAuthorization
         Assert.Null(projection.ProviderReference);
     }
 
+    [Fact]
+    public async Task FailedPendingProjectionIsPropagatedAsPersistenceFailure()
+    {
+        var persister = new RecordingPersister
+        {
+            InsertResult = Result<bool>.Error("insert failed")
+        };
+        var handler = new PaymentAuthorizationRequestedEventHandler(
+            new PaymentAuthorizationService(persister),
+            NullLoggerFactory.Instance);
+
+        var exception = await Assert.ThrowsAsync<PersistenceException>(() =>
+            handler.HandleAsync(
+                new PaymentAuthorizationRequested(
+                    new PaymentAuthorizationId(Guid.CreateVersion7().ToString()),
+                    new SalesOrderReference(Guid.CreateVersion7().ToString()),
+                    Guid.CreateVersion7()),
+                CancellationToken.None));
+
+        Assert.Contains("pending payment authorization projection", exception.Message);
+    }
+
     private sealed class RecordingPersister : IPersister
     {
         public DtoBase? Inserted { get; private set; }
+        public Result<bool> InsertResult { get; init; } = Result<bool>.Success(true);
 
         public Task<Result<T>> GetByIdAsync<T>(string id, CancellationToken cancellationToken)
             where T : DtoBase =>
@@ -50,7 +74,7 @@ public sealed class ProjectPendingAuthorization
             where T : DtoBase
         {
             Inserted = entity;
-            return Task.FromResult(Result<bool>.Success(true));
+            return Task.FromResult(InsertResult);
         }
 
         public Task<Result<bool>> UpdateAsync<T>(T entity, CancellationToken cancellationToken)
