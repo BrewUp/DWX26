@@ -2,7 +2,7 @@
 title: "Story 1.1: Establish the Payment Module and Authorization Domain"
 storyId: "1.1"
 storyKey: "1-1-order-confirmation"
-status: ready-for-dev
+status: review
 created: 2026-07-27
 updated: 2026-07-27
 epic: "Evidence-Backed Sales Order Confirmation"
@@ -335,6 +335,9 @@ OpenAI GPT-5 Codex
   persistence, callback, publication, compensation, timeout, retry, refund,
   void, shipment, invoice, Sales, Warehouse, and Sagas behavior out of scope.
 - Self-review found no Story 1.1 regression or unresolved policy decision.
+- Review fix: architecture coverage now inspects ProjectReference,
+  PackageReference, FrameworkReference, and Reference items so unused forbidden
+  dependencies cannot evade the Payment/REST boundary checks.
 
 ### File List
 
@@ -374,3 +377,5 @@ OpenAI GPT-5 Codex
 - 2026-07-27: Established the complete six-project Payment boundary,
   authorization contracts/domain, architecture/domain tests, and minimal
   solution/REST composition for Story 1.1.
+- 2026-07-27: Strengthened dependency-item architecture coverage and aligned
+  frontmatter status with the body review status.

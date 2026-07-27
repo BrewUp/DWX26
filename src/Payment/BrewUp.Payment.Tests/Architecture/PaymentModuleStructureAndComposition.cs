@@ -15,6 +15,86 @@ public sealed class PaymentModuleStructureAndComposition
         "Payment/BrewUp.Payment.Tests/BrewUp.Payment.Tests.csproj"
     ];
 
+    private static readonly string[] GovernedDependencyItemTypes =
+    [
+        "ProjectReference",
+        "PackageReference",
+        "FrameworkReference",
+        "Reference"
+    ];
+
+    private static readonly string[] CrossContextForbiddenDependencies =
+    [
+        "BrewUp.Sales.Domain",
+        "BrewUp.Sales.Infrastructure",
+        "BrewUp.Warehouse.Domain",
+        "BrewUp.Warehouse.Infrastructure"
+    ];
+
+    private static readonly string[] DomainForbiddenDependencies =
+    [
+        "BrewUp.Payment.ReadModel",
+        "BrewUp.Payment.Infrastructure",
+        "BrewUp.Payment.Facade",
+        "BrewUp.Payment.Tests",
+        "Microsoft.AspNetCore",
+        "MongoDB",
+        "RabbitMQ",
+        "BrewUp.Sales.Domain",
+        "BrewUp.Sales.Infrastructure",
+        "BrewUp.Warehouse.Domain",
+        "BrewUp.Warehouse.Infrastructure"
+    ];
+
+    [Theory]
+    [InlineData("ProjectReference")]
+    [InlineData("PackageReference")]
+    [InlineData("FrameworkReference")]
+    [InlineData("Reference")]
+    public void DependencyInspectionIncludesEveryGovernedItemType(string itemType)
+    {
+        var project = XDocument.Parse(
+            $"""
+             <Project Sdk="Microsoft.NET.Sdk">
+               <ItemGroup>
+                 <{itemType} Include="BrewUp.Payment.Infrastructure" />
+               </ItemGroup>
+             </Project>
+             """);
+
+        var dependency = Assert.Single(GetDependencyItems(project));
+
+        Assert.Equal(itemType, dependency.ItemType);
+        Assert.Equal("BrewUp.Payment.Infrastructure", dependency.Include);
+    }
+
+    [Theory]
+    [InlineData("PackageReference", "Microsoft.AspNetCore.Mvc")]
+    [InlineData("FrameworkReference", "Microsoft.AspNetCore.App")]
+    [InlineData("Reference", "MongoDB.Driver")]
+    [InlineData("PackageReference", "RabbitMQ.Client")]
+    [InlineData("Reference", "BrewUp.Payment.Infrastructure")]
+    [InlineData("ProjectReference", "../Sales/BrewUp.Sales.Domain/BrewUp.Sales.Domain.csproj")]
+    public void DomainDependencyInspectionFindsForbiddenUnusedReferences(
+        string itemType,
+        string include)
+    {
+        var project = XDocument.Parse(
+            $"""
+             <Project Sdk="Microsoft.NET.Sdk">
+               <ItemGroup>
+                 <{itemType} Include="{include}" />
+               </ItemGroup>
+             </Project>
+             """);
+
+        var dependency = Assert.Single(
+            FindForbiddenDependencyItems(project, DomainForbiddenDependencies));
+
+        Assert.Equal(itemType, dependency.ItemType);
+        Assert.Equal(include, dependency.Include);
+    }
+
     [Fact]
     public void ContractsAreOwnedByPaymentSharedKernel()
     {
@@ -39,49 +119,56 @@ public sealed class PaymentModuleStructureAndComposition
     }
 
     [Fact]
-    public void ProjectReferencesFollowPaymentLayerBoundaries()
+    public void ProjectDependencyItemsFollowPaymentLayerBoundaries()
     {
-        AssertProjectReferences(
-            "Payment/BrewUp.Payment.SharedKernel/BrewUp.Payment.SharedKernel.csproj");
-        AssertProjectReferences(
+        AssertProjectDependencies(
+            "Payment/BrewUp.Payment.SharedKernel/BrewUp.Payment.SharedKernel.csproj",
+            [],
+            ForbiddenDependenciesForPaymentLayers(
+                "Domain", "ReadModel", "Infrastructure", "Facade", "Tests"));
+        AssertProjectDependencies(
             "Payment/BrewUp.Payment.Domain/BrewUp.Payment.Domain.csproj",
-            "../BrewUp.Payment.SharedKernel/BrewUp.Payment.SharedKernel.csproj");
-        AssertProjectReferences(
+            ["../BrewUp.Payment.SharedKernel/BrewUp.Payment.SharedKernel.csproj"],
+            DomainForbiddenDependencies);
+        AssertProjectDependencies(
             "Payment/BrewUp.Payment.ReadModel/BrewUp.Payment.ReadModel.csproj",
-            "../BrewUp.Payment.SharedKernel/BrewUp.Payment.SharedKernel.csproj");
-        AssertProjectReferences(
+            ["../BrewUp.Payment.SharedKernel/BrewUp.Payment.SharedKernel.csproj"],
+            ForbiddenDependenciesForPaymentLayers(
+                "Domain", "Infrastructure", "Facade", "Tests"));
+        AssertProjectDependencies(
             "Payment/BrewUp.Payment.Infrastructure/BrewUp.Payment.Infrastructure.csproj",
-            "../BrewUp.Payment.Domain/BrewUp.Payment.Domain.csproj",
-            "../BrewUp.Payment.SharedKernel/BrewUp.Payment.SharedKernel.csproj");
-        AssertProjectReferences(
+            [
+                "../BrewUp.Payment.Domain/BrewUp.Payment.Domain.csproj",
+                "../BrewUp.Payment.SharedKernel/BrewUp.Payment.SharedKernel.csproj"
+            ],
+            ForbiddenDependenciesForPaymentLayers("ReadModel", "Facade", "Tests"));
+        AssertProjectDependencies(
             "Payment/BrewUp.Payment.Facade/BrewUp.Payment.Facade.csproj",
-            "../BrewUp.Payment.Domain/BrewUp.Payment.Domain.csproj",
-            "../BrewUp.Payment.Infrastructure/BrewUp.Payment.Infrastructure.csproj",
-            "../BrewUp.Payment.ReadModel/BrewUp.Payment.ReadModel.csproj",
-            "../BrewUp.Payment.SharedKernel/BrewUp.Payment.SharedKernel.csproj");
+            [
+                "../BrewUp.Payment.Domain/BrewUp.Payment.Domain.csproj",
+                "../BrewUp.Payment.Infrastructure/BrewUp.Payment.Infrastructure.csproj",
+                "../BrewUp.Payment.ReadModel/BrewUp.Payment.ReadModel.csproj",
+                "../BrewUp.Payment.SharedKernel/BrewUp.Payment.SharedKernel.csproj"
+            ],
+            ForbiddenDependenciesForPaymentLayers("Tests"));
+        AssertProjectDependencies(
+            "Payment/BrewUp.Payment.Tests/BrewUp.Payment.Tests.csproj",
+            [
+                "../BrewUp.Payment.Domain/BrewUp.Payment.Domain.csproj",
+                "../BrewUp.Payment.SharedKernel/BrewUp.Payment.SharedKernel.csproj"
+            ],
+            CrossContextForbiddenDependencies);
     }
 
     [Fact]
     public void DomainHasNoForbiddenLayerOrFrameworkDependencies()
     {
-        string[] forbiddenDependencies =
-        [
-            "BrewUp.Payment.Facade",
-            "BrewUp.Payment.ReadModel",
-            "BrewUp.Payment.Infrastructure",
-            "Microsoft.AspNetCore",
-            "MongoDB",
-            "RabbitMQ",
-            "BrewUp.Sales.Domain",
-            "BrewUp.Warehouse.Domain"
-        ];
-
         var referencedAssemblies = Assembly.Load("BrewUp.Payment.Domain")
             .GetReferencedAssemblies()
             .Select(reference => reference.Name ?? string.Empty)
             .ToArray();
 
-        foreach (var forbiddenDependency in forbiddenDependencies)
+        foreach (var forbiddenDependency in DomainForbiddenDependencies)
         {
             Assert.DoesNotContain(
                 referencedAssemblies,
@@ -124,27 +211,78 @@ public sealed class PaymentModuleStructureAndComposition
 
         var restProject = XDocument.Load(
             Path.Combine(RepositoryRoot, "src", "BrewUp.Rest", "BrewUp.Rest.csproj"));
-        var paymentReferences = restProject
-            .Descendants("ProjectReference")
-            .Select(reference => Normalize((string?)reference.Attribute("Include") ?? string.Empty))
-            .Where(reference => reference.Contains("/Payment/", StringComparison.Ordinal))
+        var paymentDependencies = GetDependencyItems(restProject)
+            .Where(dependency => IsPaymentDependency(dependency.Include))
             .ToArray();
 
-        Assert.Equal(
-            ["../Payment/BrewUp.Payment.Facade/BrewUp.Payment.Facade.csproj"],
-            paymentReferences);
+        Assert.Collection(
+            paymentDependencies,
+            dependency =>
+            {
+                Assert.Equal("ProjectReference", dependency.ItemType);
+                Assert.Equal(
+                    "../Payment/BrewUp.Payment.Facade/BrewUp.Payment.Facade.csproj",
+                    Normalize(dependency.Include));
+            });
     }
 
-    private static void AssertProjectReferences(string projectPath, params string[] expectedReferences)
+    private static void AssertProjectDependencies(
+        string projectPath,
+        string[] expectedProjectReferences,
+        string[] forbiddenDependencies)
     {
         var project = XDocument.Load(Path.Combine(RepositoryRoot, "src", projectPath));
-        var references = project
-            .Descendants("ProjectReference")
-            .Select(reference => Normalize((string?)reference.Attribute("Include") ?? string.Empty))
+        var projectReferences = GetDependencyItems(project)
+            .Where(dependency => dependency.ItemType == "ProjectReference")
+            .Select(dependency => Normalize(dependency.Include))
             .Order(StringComparer.Ordinal)
             .ToArray();
 
-        Assert.Equal(expectedReferences.Select(Normalize).Order(StringComparer.Ordinal), references);
+        Assert.Equal(
+            expectedProjectReferences.Select(Normalize).Order(StringComparer.Ordinal),
+            projectReferences);
+
+        var forbiddenItems = FindForbiddenDependencyItems(project, forbiddenDependencies);
+        Assert.True(
+            forbiddenItems.Length == 0,
+            $"{projectPath} contains forbidden dependency items: " +
+            string.Join(", ", forbiddenItems.Select(
+                dependency => $"{dependency.ItemType}={dependency.Include}")));
+    }
+
+    private static DependencyItem[] GetDependencyItems(XDocument project) =>
+        project
+            .Descendants()
+            .Where(element => GovernedDependencyItemTypes.Contains(
+                element.Name.LocalName,
+                StringComparer.Ordinal))
+            .Select(element => new DependencyItem(
+                element.Name.LocalName,
+                (string?)element.Attribute("Include") ?? string.Empty))
+            .Where(dependency => !string.IsNullOrWhiteSpace(dependency.Include))
+            .ToArray();
+
+    private static DependencyItem[] FindForbiddenDependencyItems(
+        XDocument project,
+        IEnumerable<string> forbiddenDependencies) =>
+        GetDependencyItems(project)
+            .Where(dependency => forbiddenDependencies.Any(forbidden =>
+                Normalize(dependency.Include).Contains(
+                    forbidden,
+                    StringComparison.OrdinalIgnoreCase)))
+            .ToArray();
+
+    private static string[] ForbiddenDependenciesForPaymentLayers(params string[] layers) =>
+        layers
+            .Select(layer => $"BrewUp.Payment.{layer}")
+            .Concat(CrossContextForbiddenDependencies)
+            .ToArray();
+
+    private static bool IsPaymentDependency(string include)
+    {
+        var normalized = Normalize(include);
+        return normalized.Contains("/Payment/", StringComparison.OrdinalIgnoreCase) ||
+               normalized.Contains("BrewUp.Payment.", StringComparison.OrdinalIgnoreCase);
     }
 
     private static string RepositoryRoot
@@ -164,4 +302,6 @@ public sealed class PaymentModuleStructureAndComposition
     }
 
     private static string Normalize(string path) => path.Replace('\\', '/');
+
+    private sealed record DependencyItem(string ItemType, string Include);
 }
