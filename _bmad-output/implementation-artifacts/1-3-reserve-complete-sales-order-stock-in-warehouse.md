@@ -2,7 +2,7 @@
 title: "Story 1.3: Reserve Complete Sales Order Stock in Warehouse"
 storyId: "1.3"
 storyKey: "1-3-reserve-complete-sales-order-stock-in-warehouse"
-status: ready-for-dev
+status: review
 created: 2026-07-27
 updated: 2026-07-27
 epic: "Evidence-Backed Sales Order Confirmation"
@@ -11,7 +11,7 @@ baseline_commit: 8ca284c00a08bcb1a8375369f341d830941280f6
 
 # Story 1.3: Reserve Complete Sales Order Stock in Warehouse
 
-Status: ready-for-dev
+Status: review
 
 ## Story
 
@@ -90,11 +90,11 @@ decision.
 
 ## Tasks / Subtasks
 
-- [ ] Task 1 — Record baseline and write all RED-first tests (AC: 1–10)
-  - [ ] Record `git rev-parse HEAD`, the unchanged Story 1.3 production-file
+- [x] Task 1 — Record baseline and write all RED-first tests (AC: 1–10)
+  - [x] Record `git rev-parse HEAD`, the unchanged Story 1.3 production-file
     set, and the current full Warehouse result (baseline: 6/6 at
     `8ca284c00a08bcb1a8375369f341d830941280f6`).
-  - [ ] Before changing production code, create these exact tests:
+  - [x] Before changing production code, create these exact tests:
     `ReserveAllStockSuccessfully`,
     `RejectReservationWhenBeerMissing`,
     `RejectReservationWhenQuantityInsufficient`,
@@ -107,127 +107,145 @@ decision.
     `PublishReservationIntegrationOutcomes`,
     `WarehouseReservationContractsStayInSharedKernel`, and
     `Story13ImplementationConventionReview`.
-  - [ ] `ReserveAllStockSuccessfully` asserts one event with all rows in their
+  - [x] `ReserveAllStockSuccessfully` asserts one event with all rows in their
     exact input order, not merely equivalent grouped rows.
-  - [ ] `RejectCumulativeDuplicateRowsBeyondAvailability` uses at least two
+  - [x] `RejectCumulativeDuplicateRowsBeyondAvailability` uses at least two
     individually sufficient duplicate rows whose sum exceeds the single
     availability fact.
-  - [ ] `DoNotReserveStockTwice` seeds successful history and replays the same
+  - [x] `DoNotReserveStockTwice` seeds successful history and replays the same
     stable ID; add the failed-history replay assertion in the same test class
     or a second fact with the same exact test-class name.
-  - [ ] Run one exact filter containing all twelve names. Accept compile RED
+  - [x] Run one exact filter containing all twelve names. Accept compile RED
     only for the deliberately absent Story 1.3 contracts/types; reject
     restore, syntax, project, or infrastructure failure as non-meaningful RED.
 
-- [ ] Task 2 — Add Warehouse-owned reservation contracts (AC: 1–8)
-  - [ ] Create `StockReservationId(string value) : DomainId` under Warehouse
+- [x] Task 2 — Add Warehouse-owned reservation contracts (AC: 1–8)
+  - [x] Create `StockReservationId(string value) : DomainId` under Warehouse
     SharedKernel `DomainIds/`.
-  - [ ] Create `ReserveStock` with aggregate/reservation ID, `WarehouseId`,
+  - [x] Create `ReserveStock` with aggregate/reservation ID, `WarehouseId`,
     Warehouse-owned `SalesOrderId`, a materialized ordered
     `IReadOnlyList<ItemRequested>`, and correlation ID.
-  - [ ] Create `StockReservationRequestedIntegrationEvent` with the same
+  - [x] Create `StockReservationRequestedIntegrationEvent` with the same
     stable reservation ID, Warehouse ID, Sales Order ID, ordered rows, and
     correlation ID. It is an integration request to Warehouse, not a stock
     decision.
-  - [ ] Create `StockReserved` and
+  - [x] Create `StockReserved` and
     `StockReservedIntegrationEvent` carrying the reservation ID, Warehouse ID,
     Sales Order ID, and all original ordered assessed rows.
-  - [ ] Create `StockReservationFailed` and
+  - [x] Create `StockReservationFailed` and
     `StockReservationFailedIntegrationEvent` carrying the reservation ID,
     Warehouse ID, Sales Order ID, the exact stable failure reason
     `"All requested stock is not available."`, and correlation ID. They expose
     no reserved-row collection.
-  - [ ] Do not create reservation contracts under `BrewUp.Shared`, Sales,
+  - [x] Do not create reservation contracts under `BrewUp.Shared`, Sales,
     Sagas, the REST host, or Warehouse Domain.
 
-- [ ] Task 3 — Implement the all-or-nothing aggregate and handler (AC: 1–4, 8)
-  - [ ] Create an event-sourced `StockReservation` aggregate. Its empty state
+- [x] Task 3 — Implement the all-or-nothing aggregate and handler (AC: 1–4, 8)
+  - [x] Create an event-sourced `StockReservation` aggregate. Its empty state
     accepts one decision; applying either terminal event restores its ID and
     terminal state so replay is a no-op.
-  - [ ] Materialize input exactly once. Reject an empty request only if the
+  - [x] Materialize input exactly once. Reject an empty request only if the
     existing upstream contract/test requires it; otherwise stop because empty
     reservation policy is not defined.
-  - [ ] First validate that every assessed row has matching ordered/available
+  - [x] First validate that every assessed row has matching ordered/available
     units. Then group by canonical key
     `(WarehouseId from command, BeerId, QuantityOrdered.UnitOfMeasure)`, sum
     ordered quantity per group, and compare with the single availability fact
     supplied for that key. The Task 4 row-by-row pseudocode is not sufficient
     for duplicate rows and must not be copied as the final decision.
-  - [ ] Emit one failure if any group fails; otherwise emit one success with the
+  - [x] Emit one failure if any group fails; otherwise emit one success with the
     untouched ordered array. Never emit per-row events or reorder/group the
     outcome rows.
-  - [ ] `ReserveStockCommandHandler` performs only
+  - [x] `ReserveStockCommandHandler` performs only
     `load-or-create -> aggregate.Reserve(...) -> save`; it contains no
     availability query or policy and uses the stable command ID.
-  - [ ] Register the handler exactly once in `DomainHelper`.
+  - [x] Register the handler exactly once in `DomainHelper`.
 
-- [ ] Task 4 — Assess every row in the Warehouse ACL (AC: 1, 2, 5, 8, 11)
-  - [ ] Implement `StockReservationRequestedIntegrationEventHandler` as a new
+- [x] Task 4 — Assess every row in the Warehouse ACL (AC: 1, 2, 5, 8, 11)
+  - [x] Implement `StockReservationRequestedIntegrationEventHandler` as a new
     handler; do not repurpose or modify
     `RequestBeerAvailablityRaisedEventHandler`.
-  - [ ] Iterate the request rows in input order. Await
+  - [x] Iterate the request rows in input order. Await
     `GetAvailabilityByWarehouseIdAndBeerIdAsync` for every row with
     `ConfigureAwait(false)`, recording zero in the ordered unit when lookup
     fails and recording the factual on-hand/remaining quantity when it
     succeeds.
-  - [ ] Do not return, break, dispatch, publish, or decide inside the loop.
+  - [x] Do not return, break, dispatch, publish, or decide inside the loop.
     After the loop, send exactly one `ReserveStock` with the same stable
     reservation ID, Warehouse ID, Sales Order ID, ordered assessed rows, and
     correlation ID.
-  - [ ] Register the ACL once in `WarehouseFacadeHelper`; preserve all four
+  - [x] Register the ACL once in `WarehouseFacadeHelper`; preserve all four
     existing ACL registrations and the existing Facade composition.
 
-- [ ] Task 5 — Project reservation outcomes and subtract exactly once (AC: 4,
+- [x] Task 5 — Project reservation outcomes and subtract exactly once (AC: 4,
       6, 7, 11)
-  - [ ] Add a rebuildable `StockReservation` DTO keyed by reservation ID with
+  - [x] Add a rebuildable `StockReservation` DTO keyed by reservation ID with
     Warehouse ID, Sales Order ID, terminal status, and ordered rows. Reserved
     projections contain the original rows; failed projections contain an empty
     reserved-row list and the stable failure reason.
-  - [ ] `StockReservedEventHandler` and
+  - [x] `StockReservedEventHandler` and
     `StockReservationFailedEventHandler` persist only the corresponding
     projection. Propagate unsuccessful/false persistence results as failures;
     do not acknowledge failed persistence as success and do not add retry.
-  - [ ] Add `StockReservationQueries`,
+  - [x] Add `StockReservationQueries`,
     `IStockReservationService`, and `StockReservationService` to retrieve
     successful reservations relevant to Warehouse/beer/unit queries.
-  - [ ] Extend `AvailabilityService`, without changing the on-hand
+  - [x] Extend `AvailabilityService`, without changing the on-hand
     `Availability` DTO, so both availability lookup methods return on-hand
     minus matching rows from successful reservation documents. Do the
     subtraction in exactly one layer; do not also decrement on-hand or subtract
     in both query and service.
-  - [ ] Register reservation queries/services in both `AddReadModel` and
+  - [x] Register reservation queries/services in both `AddReadModel` and
     `AddReadModelForMcp` so existing consumers receive the same remaining
     availability semantics. Register both projection handlers only in the
     normal domain-event composition.
 
-- [ ] Task 6 — Publish owned integration outcomes (AC: 4, 6, 8)
-  - [ ] Add separate Facade domain-event publishers for `StockReserved` and
+- [x] Task 6 — Publish owned integration outcomes (AC: 4, 6, 8)
+  - [x] Add separate Facade domain-event publishers for `StockReserved` and
     `StockReservationFailed`, following the completed Payment publisher
     pattern. They translate the owned domain outcome to the one matching
     existing Warehouse integration contract and preserve correlation with
     `MessageHelpers.GetCorrelationId`.
-  - [ ] Register each publisher exactly once in `WarehouseFacadeHelper`.
+  - [x] Register each publisher exactly once in `WarehouseFacadeHelper`.
     Projection handlers do not publish, and the ACL never manufactures an
     outcome.
-  - [ ] Prove success emits only `StockReservedIntegrationEvent`, failure emits
+  - [x] Prove success emits only `StockReservedIntegrationEvent`, failure emits
     only `StockReservationFailedIntegrationEvent`, and a duplicate command
     produces neither outcome again.
 
-- [ ] Task 7 — Verify placement, GREEN, regressions, and conventions (AC: 8–12)
-  - [ ] Run the exact twelve-test Story 1.3 filter from Task 1.
-  - [ ] Run
+- [x] Task 7 — Verify placement, GREEN, regressions, and conventions (AC: 8–12)
+  - [x] Run the exact twelve-test Story 1.3 filter from Task 1.
+  - [x] Run
     `dotnet test src/Warehouse/BrewUp.Warehouse.Tests/BrewUp.Warehouse.Tests.csproj`.
-  - [ ] Run Warehouse architecture tests and build `src/BrewUp.slnx`.
+  - [x] Run Warehouse architecture tests and build `src/BrewUp.slnx`.
     Architecture assertions must not be weakened to make new dependencies pass.
-  - [ ] Run `Story13ImplementationConventionReview` only after Warehouse GREEN,
+  - [x] Run `Story13ImplementationConventionReview` only after Warehouse GREEN,
     against the recorded changed production-file set.
-  - [ ] Confirm the existing six baseline Warehouse tests remain present and
+  - [x] Confirm the existing six baseline Warehouse tests remain present and
     green; confirm no existing Warehouse endpoint, shipment, stock-addition,
     legacy ACL, or REST composition file changed unless a failing Story 1.3
     check proves the change necessary.
-  - [ ] Confirm one reservation projection per stable ID; remaining
+  - [x] Confirm one reservation projection per stable ID; remaining
     availability subtracts a successful reservation once and a failed
     reservation zero times.
+
+### Review Findings
+
+- [ ] [Review][Decision] Define behavior for inconsistent duplicate
+  availability facts — Duplicate canonical rows can carry different
+  `QuantityAvailable` values because the ACL assesses each row separately.
+  Selecting the first value makes the decision input-order-dependent, while
+  the story explicitly requires stopping instead of inventing reconciliation
+  behavior. Decide whether inconsistent facts must fail, abort without a
+  terminal outcome, or use another explicitly owned rule.
+- [ ] [Review][Decision] Define behavior for an empty reservation request —
+  the aggregate currently emits `StockReserved` for an empty row collection,
+  but the story explicitly says to stop when no upstream non-empty invariant
+  is proven rather than inventing an empty-request policy. Decide whether
+  empty input must fail, abort without a terminal outcome, or be accepted.
+- [ ] [Review][Patch] Filter successful reservation projections by matching
+  beer and unit before materialization
+  [`src/Warehouse/BrewUp.Warehouse.ReadModel/Services/StockReservationService.cs`:52]
 
 ## Dev Notes
 
@@ -495,8 +513,111 @@ created. Story is ready-for-dev only after the strict story guard returns
 
 GPT-5.6 Codex
 
+### Implementation Plan
+
+- Establish the complete twelve-name Story 1.3 behavior and boundary test set
+  before touching Warehouse production code, then accept only absent-contract
+  compiler RED.
+- Add producer-owned SharedKernel contracts, implement the terminal
+  all-or-nothing aggregate and load/call/save handler, then add the ordered ACL.
+- Project terminal outcomes separately from integration publication and
+  calculate remaining availability from successful reservation projections in
+  one ReadModel layer.
+- Verify focused behavior, full Warehouse regressions, architecture, solution
+  build, conventions, preserved files, and known full-suite baselines before
+  moving the story to review.
+
 ### Debug Log References
+
+- Implementation workspace started at
+  `c1aedfb01912df23b6fa6c6c4f509760098f8491`; the story's recorded production
+  comparison baseline remains
+  `8ca284c00a08bcb1a8375369f341d830941280f6`. The intervening commit changed
+  documentation only; `src/Warehouse` had no delta.
+- Baseline Warehouse suite: 6/6 passed. Package audit and existing nullable
+  warnings were present before Story 1.3.
+- Mandatory RED: after correcting two test-only namespace imports, the exact
+  twelve-name filter restored and built every existing Warehouse layer, then
+  failed compilation only on deliberately absent Story 1.3 types including
+  `StockReservationId`, `ReserveStock`, the reservation projection, and the
+  Facade publishers.
+- Focused GREEN: the exact twelve-name filter executed 17 cases and passed
+  17/17. Full Warehouse passed 23/23, retaining the six baseline tests.
+- Warehouse architecture filter passed 6/6. `dotnet build src/BrewUp.slnx`
+  succeeded with 0 errors and 200 existing package-audit/compiler warnings.
+- Post-GREEN `Story13ImplementationConventionReview` passed 1/1 against the
+  tracked and untracked Story 1.3 production-file set.
+- Full no-build solution regression retained only classified baselines:
+  Purchases `SubmitPurchaseOrderSuccessfully` failed with the existing
+  `NotImplementedException`; three REST tests failed because RabbitMQ at
+  `127.0.0.1:5672` was unavailable. Warehouse remained 23/23; Payment 27/27,
+  Sales 7/7, Sagas 3/3, MasterData 3/3, and Dashboards 2/2 passed.
 
 ### Completion Notes List
 
+- Added Warehouse-owned stable reservation contracts with constructor
+  materialization so command and event row order cannot change.
+- Added a terminal event-sourced `StockReservation` aggregate that makes one
+  all-or-none decision, cumulatively compares duplicate canonical keys against
+  one availability fact, and no-ops after either terminal history.
+- Added a load-or-create/call/save command handler using the stable request ID,
+  `Guid.CreateVersion7()`, and `ConfigureAwait(false)`.
+- Added a dedicated ACL that assesses every original row in order, maps missing
+  availability to zero in the ordered unit, and sends one complete command
+  only after assessment.
+- Added successful and failed reservation projections with persistence failure
+  propagation. Failed projections contain no rows.
+- Remaining availability now subtracts matching successful
+  `QuantityOrdered` values exactly once by Warehouse, beer, and exact unit;
+  reservation processing never mutates on-hand `Availability`.
+- Added separate Warehouse Facade publishers for the matching success/failure
+  integration outcomes and preserved correlation metadata.
+- Preserved BC-005–BC-008 and BC-011 ownership/policy limits and
+  AR-004–AR-012, AR-015, and AR-017 placement/dependency rules. No release,
+  expiry, retry, compensation, partial reservation, shipment, invoice, unit
+  conversion, stronger concurrency, or cross-module implementation dependency
+  was introduced.
+
 ### File List
+
+- `_bmad-output/implementation-artifacts/1-3-reserve-complete-sales-order-stock-in-warehouse.md`
+- `src/Warehouse/BrewUp.Warehouse.SharedKernel/DomainIds/StockReservationId.cs`
+- `src/Warehouse/BrewUp.Warehouse.SharedKernel/Messages/Commands/ReserveStock.cs`
+- `src/Warehouse/BrewUp.Warehouse.SharedKernel/Messages/Events/StockReservationRequestedIntegrationEvent.cs`
+- `src/Warehouse/BrewUp.Warehouse.SharedKernel/Messages/Events/StockReserved.cs`
+- `src/Warehouse/BrewUp.Warehouse.SharedKernel/Messages/Events/StockReservationFailed.cs`
+- `src/Warehouse/BrewUp.Warehouse.SharedKernel/Messages/Events/StockReservedIntegrationEvent.cs`
+- `src/Warehouse/BrewUp.Warehouse.SharedKernel/Messages/Events/StockReservationFailedIntegrationEvent.cs`
+- `src/Warehouse/BrewUp.Warehouse.Domain/Entities/StockReservation.cs`
+- `src/Warehouse/BrewUp.Warehouse.Domain/CommandHandlers/ReserveStockCommandHandler.cs`
+- `src/Warehouse/BrewUp.Warehouse.Domain/DomainHelper.cs`
+- `src/Warehouse/BrewUp.Warehouse.ReadModel/Dtos/StockReservation.cs`
+- `src/Warehouse/BrewUp.Warehouse.ReadModel/EventHandlers/StockReservedEventHandler.cs`
+- `src/Warehouse/BrewUp.Warehouse.ReadModel/EventHandlers/StockReservationFailedEventHandler.cs`
+- `src/Warehouse/BrewUp.Warehouse.ReadModel/Queries/StockReservationQueries.cs`
+- `src/Warehouse/BrewUp.Warehouse.ReadModel/Services/IStockReservationService.cs`
+- `src/Warehouse/BrewUp.Warehouse.ReadModel/Services/StockReservationService.cs`
+- `src/Warehouse/BrewUp.Warehouse.ReadModel/Services/AvailabilityService.cs`
+- `src/Warehouse/BrewUp.Warehouse.ReadModel/ReadModelHelper.cs`
+- `src/Warehouse/BrewUp.Warehouse.Facade/Acl/StockReservationRequestedIntegrationEventHandler.cs`
+- `src/Warehouse/BrewUp.Warehouse.Facade/EventHandlers/StockReservedIntegrationEventPublisher.cs`
+- `src/Warehouse/BrewUp.Warehouse.Facade/EventHandlers/StockReservationFailedIntegrationEventPublisher.cs`
+- `src/Warehouse/BrewUp.Warehouse.Facade/WarehouseFacadeHelper.cs`
+- `src/Warehouse/BrewUp.Warehouse.Tests/Domain/ReserveAllStockSuccessfully.cs`
+- `src/Warehouse/BrewUp.Warehouse.Tests/Domain/RejectReservationWhenBeerMissing.cs`
+- `src/Warehouse/BrewUp.Warehouse.Tests/Domain/RejectReservationWhenQuantityInsufficient.cs`
+- `src/Warehouse/BrewUp.Warehouse.Tests/Domain/RejectReservationWhenUnitOfMeasureMismatches.cs`
+- `src/Warehouse/BrewUp.Warehouse.Tests/Domain/DoNotReserveStockTwice.cs`
+- `src/Warehouse/BrewUp.Warehouse.Tests/Domain/RejectCumulativeDuplicateRowsBeyondAvailability.cs`
+- `src/Warehouse/BrewUp.Warehouse.Tests/Facade/AssessEveryReservationRowBeforeDispatch.cs`
+- `src/Warehouse/BrewUp.Warehouse.Tests/ReadModel/ProjectSuccessfulReservationOnce.cs`
+- `src/Warehouse/BrewUp.Warehouse.Tests/ReadModel/DoNotProjectFailedReservationAsAvailability.cs`
+- `src/Warehouse/BrewUp.Warehouse.Tests/Facade/PublishReservationIntegrationOutcomes.cs`
+- `src/Warehouse/BrewUp.Warehouse.Tests/Architecture/WarehouseReservationContractsStayInSharedKernel.cs`
+- `src/Warehouse/BrewUp.Warehouse.Tests/Architecture/Story13ImplementationConventionReview.cs`
+
+## Change Log
+
+- 2026-07-27: Implemented Warehouse-owned all-or-nothing complete-order stock
+  reservation, projection-backed availability subtraction, owned integration
+  outcomes, architecture/convention gates, and RED/GREEN regression evidence.
