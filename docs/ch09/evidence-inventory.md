@@ -80,25 +80,56 @@ These may not be counted as Coverage misses.
 
 ---
 
-## 4. Coverage ceiling
+## 4. How Coverage is scored
 
-Carrier concepts reachable from this evidence:
+A single ceiling cannot score four specialists whose outputs have different
+shapes. An EventStormer that returns no context relationships has not missed
+anything; a Context Mapper that returns none has.
+
+Coverage is therefore scored in two places.
+
+### Per run — against the E-items
+
+Each specialist's contract declares which `E-` items its output is expected to
+account for. Coverage for that run is measured only against its declared subset,
+and recorded as surfaced, missed, and unsupported additions.
+
+Items outside a specialist's declared subset are neither credited nor charged. If
+a run surfaces something outside its subset and does so well, that is recorded as
+an observation, not as Coverage.
+
+### At checkpoint 9.5 — against the carrier
+
+The mapping from candidates to carrier concepts is evaluated once, on the four
+outputs together. Any single specialist reaching every concept alone would mean
+the specialization had failed.
+
+---
+
+## 5. Carrier concepts reachable from this evidence
 
 ```text
-ProductStock                  E-05
-StockReservation              E-03
-ReserveStock                  E-03
-ReleaseStockReservation       E-12
-ExpireStockReservation        E-10
-StockReserved                 E-03
-StockReservationFailed        E-06
-StockReleased                 E-12, E-13
-external input, order placed  E-01
-external input, order called off  E-12
+ProductStock                       E-05
+StockReservation                   E-03
+ReserveStock                       E-03
+ReleaseStockReservation            E-12
+ExpireStockReservation             E-10
+StockReserved                      E-03
+StockReservationFailed             E-06
+StockReleased                      E-12, E-13
+StockReservationExpired            E-10, E-14
+external input, order placed       E-01
+external input, order called off   E-12
 ```
 
-Not reachable: the order-expired external input.
+Eleven reachable concepts.
 
-Full Coverage therefore means ten items, not eleven. A run that proposes an
-order-expiry input is producing an unsupported addition, not demonstrating
-recall.
+**Not reachable: the order-expired external input.** This is the twelfth carrier
+concept and the evidence does not support it. E-10 and E-14 describe the
+warehouse clearing its own board because time has passed, which is a
+warehouse-side fact with a warehouse-side trigger. Nothing in the evidence
+describes Sales expiring an order, and `QUOTE-40` states explicitly that the
+warehouse is never told what became of such orders.
+
+A run that proposes an order-expiry external input is producing an unsupported
+addition, not demonstrating recall.

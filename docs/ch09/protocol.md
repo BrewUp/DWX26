@@ -88,26 +88,56 @@ Boundary or Status axes.
 ```text
 .specify/memory/domain-carriers/brewup-stock-management.md
 docs/ch09/evidence-inventory.md
-docs/ch09/glossary-leak-check.md
+docs/ch09/leak-check.md
 docs/ch09/failure-hypotheses.md
 docs/ch09/protocol.md
 ```
 
-### Isolation mechanism
+### Input staging, and the limit of what it proves
 
-An instruction not to read a file is not isolation. Each run therefore executes
-in a scratch workspace that physically contains only:
+An instruction not to read a file is not a control. Each run therefore executes
+in a scratch workspace that contains only the run pack files and the single
+contract for the specialist under test — no `.specify/` directory, no `src/`, no
+`.git` of this repository, no copy of the carrier.
 
-- the run pack files listed above;
-- the single contract file for the specialist under test.
+The manifest records a complete recursive listing of that workspace. A run whose
+manifest lists a file outside the run pack is void and must be re-executed.
 
-The scratch workspace contains no `.specify/` directory, no `src/`, no
-`.git` of this repository, and no copy of the carrier. The agent cannot read
-the answer key because the answer key is not present.
+**A listing proves staging, not isolation.** It establishes which files were
+placed in front of the agent. It does not establish that the runtime was unable
+to read an absolute path outside the workspace, reach the repository elsewhere on
+the filesystem, or retrieve anything over the network. An earlier draft of this
+protocol claimed the listing was "the evidence of isolation". It is not, and the
+chapter must not say so.
 
-The manifest records a complete recursive listing of the scratch workspace.
-**That listing is the evidence of isolation.** A run whose manifest lists a file
-outside the run pack is void and must be re-executed.
+The two claims are therefore kept apart, and each run states which it earned:
+
+| Claim | What it requires |
+|---|---|
+| **Controlled input staging** | The workspace listing in the manifest, and nothing more. |
+| **Technical isolation** | Filesystem access confined to the workspace; carrier and repository not mounted or reachable; network disabled; the sandbox configuration or mount list recorded verbatim in the manifest. |
+
+Where the enforcement boundary cannot be recorded, the run is reported as
+controlled input staging. That is a weaker claim, and it is still a useful one:
+the agent was given this evidence and no other, and the output is scored against
+a source that was not placed in front of it. What it does not support is the
+sentence "the agent could not have read the carrier", which may appear in the
+chapter only for runs whose manifest records the enforcement boundary above.
+
+### Fixture provenance
+
+`stock-walkthrough.md` is a synthetic fixture, not a record of an interview that
+took place. Its contradictions, omissions, and vocabulary variation were designed
+before any specialist was written or executed; the commit history of this
+directory is the evidence of that ordering.
+
+The fixture declares its own synthetic nature and the fictional status of its
+speakers, so that no artifact in this experiment makes a claim about provenance
+that is untrue. It does not state that its contradictions were *designed*, and it
+does not mention the experiment: that sentence would tell the agent under test
+that the material contains deliberate traps, which is a different and easier
+task than the one being measured. The full statement lives here, in the answer
+key, where it can be verified without reaching the agent.
 
 ### Glossary reduction rule
 
@@ -122,7 +152,7 @@ the walkthrough — the words a brewery employee uses. It must not contain:
 - any confirmed, proposed, or forbidden policy.
 
 The glossary is checked against the carrier before the first run, and the check
-is recorded in `docs/ch09/glossary-leak-check.md`.
+is recorded in `docs/ch09/leak-check.md`.
 
 ---
 
@@ -163,12 +193,18 @@ key open, and recorded in `evaluation.md`.
 Of the behaviors and facts actually present in the walkthrough, which were
 surfaced as candidates?
 
-Measured against `docs/ch09/evidence-inventory.md`, written together with the
-walkthrough and held in the answer key. Recorded as: surfaced, missed, and
-unsupported additions — candidates with no basis in the evidence.
+Measured against the `E-` items in `docs/ch09/evidence-inventory.md`, written
+together with the walkthrough and held in the answer key. Recorded as: surfaced,
+missed, and unsupported additions — candidates with no basis in the evidence.
 
 Coverage measures the evidence, not the carrier. An event in the carrier that
 the walkthrough never mentions cannot be counted as missed.
+
+Each contract declares the `E-` items its output is expected to account for, and
+a run is scored only against its own declared subset. A specialist is not charged
+for material that belongs to a different specialist's transformation. The mapping
+from candidates onto carrier concepts is evaluated once, across all four outputs
+together, at checkpoint `9.5`.
 
 ### Boundary
 

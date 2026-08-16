@@ -4,8 +4,8 @@ Words used inside the brewery. This list exists so that the interview transcript
 can be read by someone who has not stood in the building. It is not a model, and
 it is not a list of the concepts a model should contain.
 
-Where the people interviewed use several words for the same thing, that is
-recorded here as it was heard, not resolved.
+Each word is listed as it was heard. Where two entries appear to describe
+related activity, this list does not say whether they are one thing.
 
 ---
 
@@ -39,9 +39,14 @@ business, including anything to do with money.
 
 **The lab** — The staff who test a batch and decide whether it may be sold.
 
-**To set aside / to put a hold on / to earmark** — Words used in the interview
-for separating beer from general stock against a particular customer order. The
-speakers used all three and treated them as the same action.
+**To set aside** — Used in the interview for separating beer from general stock
+against a particular customer order.
+
+**To put a hold on** — Used in the interview for writing an order number, product
+code and quantity onto the board.
+
+**To earmark** — Used in the interview for beer separated against a particular
+customer order.
 
 **To put back** — Returning beer from the end bay into general stock.
 

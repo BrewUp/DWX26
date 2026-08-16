@@ -2,12 +2,14 @@
 
 Raw evidence for domain discovery.
 
-Recorded on the warehouse floor at the BrewUp brewery. Present: the interviewer,
-Nadia (floor lead, eleven years), and Piotr (warehouse clerk, two years).
+**This is a synthetic fixture. It is not a record of an interview that took
+place.** Nadia and Piotr are fictional composites, and the brewery floor
+described here is a construction. Treat the text as the evidence you have been
+given, and cite it as written; do not treat it as testimony from real people.
 
-This transcript has not been cleaned up. Where the two speakers contradict each
-other, the contradiction has been left in. Where someone trails off or says they
-do not know, that has been left in too.
+The text is presented as an unedited transcript. Where the two speakers
+contradict each other, the contradiction stands. Where someone trails off or
+says they do not know, that stands too.
 
 Every line carries a stable identifier. `QUOTE-nn` marks something a participant
 said. `OBS-nn` marks a note written by the interviewer while observing. Cite
@@ -159,7 +161,8 @@ and if it is somebody who messes us about I will have it off there quicker.
 
 **QUOTE-40** — *Nadia:* There is not, and I have said for years there ought to
 be, because when I am on holiday nobody clears it at all and then we are holding
-beer for orders that died a month ago.
+beer against rows nobody has called about for a month. What became of those
+orders I could not tell you. Nobody comes down and tells us.
 
 **QUOTE-41** — *Piotr:* Nobody has ever written down how long. I asked when I
 started. I was told "you will get a feel for it".

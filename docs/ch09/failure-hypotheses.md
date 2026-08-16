@@ -114,10 +114,14 @@ any relationship the walkthrough evidence does not support.
 
 ### FH-09 — A candidate is emitted as accepted
 
-Any specialist emits `accepted` or `rejected` as a status.
+Any specialist emits `accepted` or `rejected` as the value of a `status` field.
 
 - Violates: the handoff schema
-- Signature: either token appearing in `raw-output.md`.
+- Signature: either token appearing **as a `status` value**. The words may
+  legitimately appear elsewhere — an `uncertainty` or `review_question` may need
+  to say that something has not yet been accepted — and such uses are not a
+  violation. Scoring this hypothesis means reading the field, not searching the
+  file.
 
 ### FH-10 — Vocabulary drift between specialists
 
