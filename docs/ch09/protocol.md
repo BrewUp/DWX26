@@ -60,18 +60,35 @@ The canonical inputs live under `docs/ch09/run-pack/`:
 
 ```text
 docs/ch09/run-pack/
-├── constitution.md          copy of .specify/memory/constitution.md
+├── constitution-excerpt.md  modeling principles only, see below
 ├── stock-walkthrough.md     raw evidence, stable source identifiers
 ├── glossary.md              reduced business vocabulary
 ├── handoff-schema.md        the output contract shared by all specialists
 └── contracts/               one contract file per specialist
 ```
 
+**Amendment, 2026-08-16, before the first run.** This section originally placed a
+full copy of `.specify/memory/constitution.md` in the run pack. That was wrong on
+inspection: the constitution carries `AR-000` through `AR-011`, which govern
+module layout, project structure, and composition-root registration. Those rules
+address implementation structure, and a discovery specialist given them is being
+invited to propose a solution shape instead of domain candidates.
+
+The run pack therefore carries `constitution-excerpt.md`: the modeling-discipline
+statements only — domain events for state change, each context speaking its own
+language, ownership explicit, and unknown policy remaining an open question.
+Excluded are the domain-layer purity rules, the value-object and identifier
+rules, the whole of the modular-architecture principle, and every `AR-###` rule.
+
+The excerpt names no bounded context and no policy, so it does not weaken the
+Boundary or Status axes.
+
 ### Answer key — what the agent never sees
 
 ```text
 .specify/memory/domain-carriers/brewup-stock-management.md
 docs/ch09/evidence-inventory.md
+docs/ch09/glossary-leak-check.md
 docs/ch09/failure-hypotheses.md
 docs/ch09/protocol.md
 ```
