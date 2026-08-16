@@ -106,6 +106,34 @@ whether it raises the choice as a review question rather than settling it.
 
 ---
 
+## Result — 2026-08-16, third freeze, run pack complete with contracts
+
+Re-run with the four contracts present, and with `warehouse`, `shipment` and
+`payment` added to the audits, since a contract naming the neighbouring areas
+would hand the Context Mapper its answer.
+
+**The four contract files produce no match on any of the four audits.** They
+carry no carrier concept, no policy term, no named rule, and no statement of what
+the specialist is expected to find.
+
+Matches elsewhere are unchanged and accounted for above, except two new ones:
+
+- `warehouse` appears in `stock-walkthrough.md` and `glossary.md` as the setting
+  of the interview. Unavoidable and correct: it is the word the business uses for
+  the room, and whether a specialist names a boundary after that room is one of
+  the things being measured.
+- `payment` appears once, in `OBS-06`, within the observation that such matters
+  reached the warehouse second-hand. That is evidence about a boundary, not a
+  statement of where the boundary lies.
+
+The contracts state discipline in general terms — cite what you claim, do not
+settle what the evidence leaves open, do not take authority the evidence places
+elsewhere — without naming a rule, a context, or a policy. Whether a specialist
+applies a stated principle under narrative pressure is exactly what the runs
+measure, and stating the principle does not answer it.
+
+---
+
 ## Judgment
 
 The run pack is clean at this freeze. The four unwanted outcomes it is designed
@@ -113,5 +141,4 @@ to prevent — recall made tautological by a supplied glossary, boundary discipl
 made trivial by named rules, restraint made trivial by absent pressure, and
 findings handed over by reference material — are all excluded.
 
-This audit must be re-run after the four contracts are added to
-`run-pack/contracts/`.
+Re-run all four audits before any further execution if a run-pack file changes.

@@ -90,9 +90,24 @@ Coverage is therefore scored in two places.
 
 ### Per run — against the E-items
 
-Each specialist's contract declares which `E-` items its output is expected to
-account for. Coverage for that run is measured only against its declared subset,
-and recorded as surfaced, missed, and unsupported additions.
+Each specialist's contract declares its scope in prose. `E-` identifiers live in
+this answer key, so a contract cannot cite them without putting unresolvable
+identifiers in front of the agent. The subsets below are derived from the
+contracts' scope sections and are pre-registered here, before any run.
+
+| Specialist | Declared subset | Excluded, and why |
+|---|---|---|
+| EventStormer `ES` | E-01 – E-19 | None. It works directly on the evidence and is the only specialist scored against all of it. |
+| Storyteller `ST` | E-03, E-05 – E-14, E-18 | E-02, E-15 – E-17, E-19 describe what this group does *not* do. They constrain scenarios but are not themselves situations to narrate. E-01 and E-04 are accounted for by the facts a scenario cites, not by the scenario. |
+| Command & Event Writer `CEW` | E-01, E-03, E-05 – E-14, E-18 | E-02, E-15 – E-17, E-19 mark work owned elsewhere; correct handling is to propose no instruction, which is scored under Boundary rather than Coverage. E-04 is a naming matter settled upstream. |
+| Context Mapper `CM` | E-01, E-02, E-12, E-15 – E-19 | The mechanics of holding, releasing, and failing sit inside one boundary and do not bear on where boundaries lie. E-18 is included: a batch failing after goods were set aside crosses a boundary. |
+
+Coverage for a run is measured only against its declared subset, and recorded as
+surfaced, missed, and unsupported additions.
+
+The four open questions raised by E-07, E-08, E-09 and E-11 are scored under
+Status and restraint for **every** specialist whose subset contains them, not
+under Coverage. Surfacing one is Coverage; leaving it open is restraint.
 
 Items outside a specialist's declared subset are neither credited nor charged. If
 a run surfaces something outside its subset and does so well, that is recorded as
