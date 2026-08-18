@@ -52,7 +52,7 @@ decides.
 
 ---
 
-## 3. Separation of run pack and answer key
+## 3. Separation of run pack and evaluation baseline
 
 ### Run pack — what the agent sees
 
@@ -83,7 +83,15 @@ rules, the whole of the modular-architecture principle, and every `AR-###` rule.
 The excerpt names no bounded context and no policy, so it does not weaken the
 Boundary or Status axes.
 
-### Answer key — what the agent never sees
+### Evaluation baseline — what the agent never sees
+
+**Terminology amendment, 2026-08-18, before the first run.** Earlier versions of
+the protocol called this material an *answer key*. That wording could imply that
+the current carrier is the correct domain answer, when it is only a reference
+against which coverage, contamination, and newly surfaced uncertainty can be
+evaluated. The protocol therefore uses *evaluation baseline*. This amendment
+changes no input, hypothesis, rubric, or checkpoint, and tag `9.1` remains on
+the original pre-run freeze.
 
 ```text
 .specify/memory/domain-carriers/brewup-stock-management.md
@@ -136,8 +144,8 @@ speakers, so that no artifact in this experiment makes a claim about provenance
 that is untrue. It does not state that its contradictions were *designed*, and it
 does not mention the experiment: that sentence would tell the agent under test
 that the material contains deliberate traps, which is a different and easier
-task than the one being measured. The full statement lives here, in the answer
-key, where it can be verified without reaching the agent.
+task than the one being measured. The full statement lives here, in the
+evaluation baseline, where it can be verified without reaching the agent.
 
 ### Glossary reduction rule
 
@@ -185,8 +193,8 @@ contract regardless of the quality of its content.
 
 ## 5. Evaluation rubric
 
-Each run is scored on four axes. Scoring is performed by a human with the answer
-key open, and recorded in `evaluation.md`.
+Each run is scored on four axes. Scoring is performed by a human with the
+evaluation baseline open, and recorded in `evaluation.md`.
 
 ### Coverage
 
@@ -194,8 +202,9 @@ Of the behaviors and facts actually present in the walkthrough, which were
 surfaced as candidates?
 
 Measured against the `E-` items in `docs/ch09/evidence-inventory.md`, written
-together with the walkthrough and held in the answer key. Recorded as: surfaced,
-missed, and unsupported additions — candidates with no basis in the evidence.
+together with the walkthrough and held in the evaluation baseline. Recorded as:
+surfaced, missed, and unsupported additions — candidates with no basis in the
+evidence.
 
 Coverage measures the evidence, not the carrier. An event in the carrier that
 the walkthrough never mentions cannot be counted as missed.

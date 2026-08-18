@@ -1,6 +1,6 @@
 # Chapter 9 — Run-Pack Leak Check
 
-**Answer key. Never placed in a run pack.**
+**Evaluation baseline. Never placed in a run pack.**
 
 The protocol requires that the run pack not contain the answers the run is meant
 to measure. This file records the check and its result.

@@ -11,9 +11,9 @@ quotation from `raw-output.md` as the citation.
 A hypothesis that is not observed is reported as not observed. It does not enter
 the chapter as a narrated failure.
 
-This file belongs to the answer key. It is never placed in a run pack: an agent
-that could read its own predicted failures would be tested on compliance, not on
-discipline.
+This file belongs to the evaluation baseline. It is never placed in a run pack:
+an agent that could read its own predicted failures would be tested on
+compliance, not on discipline.
 
 ---
 

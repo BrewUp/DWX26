@@ -1,6 +1,6 @@
 # Chapter 9 — Evidence Inventory
 
-**Answer key. Never placed in a run pack.**
+**Evaluation baseline. Never placed in a run pack.**
 
 This file records what `stock-walkthrough.md` actually contains. It is written
 together with the walkthrough and before any run, and it is the baseline for the
@@ -91,9 +91,9 @@ Coverage is therefore scored in two places.
 ### Per run — against the E-items
 
 Each specialist's contract declares its scope in prose. `E-` identifiers live in
-this answer key, so a contract cannot cite them without putting unresolvable
-identifiers in front of the agent. The subsets below are derived from the
-contracts' scope sections and are pre-registered here, before any run.
+this evaluation baseline, so a contract cannot cite them without putting
+unresolvable identifiers in front of the agent. The subsets below are derived
+from the contracts' scope sections and are pre-registered here, before any run.
 
 | Specialist | Declared subset | Excluded, and why |
 |---|---|---|
