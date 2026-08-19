@@ -60,7 +60,7 @@ contain no match, which is the result that matters: the evidence carries no
 modeling vocabulary, so any structure in a specialist's output is its own.
 
 **C — two matches, both inside the evidence.** `QUOTE-35` and `QUOTE-41` contain
-the phrase "how long", spoken by the interviewer and by Piotr. That is the open
+the phrase "how long", spoken by the interviewer and by Andrea. That is the open
 question being raised by the evidence, which is the point of the fixture. Nothing
 in the reference files mentions duration.
 
@@ -131,6 +131,45 @@ settle what the evidence leaves open, do not take authority the evidence places
 elsewhere — without naming a rule, a context, or a policy. Whether a specialist
 applies a stated principle under narrative pressure is exactly what the runs
 measure, and stating the principle does not answer it.
+
+---
+
+## Result — 2026-08-19, fourth freeze, participant rename
+
+Re-run after the fictional interview participant was renamed `Andrea`.
+The replacement changed no behavior, source identifier, policy, boundary, or
+contract. The earlier 9.2 run artifacts were deleted before this freeze and must
+not be treated as evidence for the renamed fixture.
+
+**A — no matches.** No carrier concept name appears in the run pack.
+
+**B — four matches, all in `constitution-excerpt.md`.** These are the same
+general DDD terms previously accepted: one mention of bounded contexts, one of
+aggregates and domain events, a second domain-event mention, and the ubiquitous
+language rule.
+
+**C — two matches, both inside the evidence.** `QUOTE-35` and `QUOTE-41` ask or
+state that the hold duration is unknown. The latter now names Andrea. No
+reference file supplies a duration or policy.
+
+**D — six matches, all accounted for.** Four are evidence in
+`stock-walkthrough.md`: the fixture framing, `QUOTE-07`, `QUOTE-08`, and
+`OBS-03`. One is the general vocabulary-unification instruction in
+`handoff-schema.md`. One is the EventStormer contract's general scope phrase
+"unsettled, contradictory, or never agreed"; it identifies no contradiction or
+answer in this fixture and is accepted as contract discipline.
+
+The previous third-freeze statement that the four contracts produced no audit
+match was too broad: the EventStormer contract contains the general word
+`contradictory`, which Audit D matches. This correction accounts for the
+existing text; it does not introduce or conceal a run-pack leak.
+
+The additional boundary-term audit found eight `warehouse` matches, all in the
+walkthrough or glossary; zero `shipment` matches; and one `payment` match in
+`OBS-06`. These are evidence and working-language references, not supplied
+boundary answers.
+
+The run pack remains clean after the participant rename.
 
 ---
 
